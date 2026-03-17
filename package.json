@@ -1,0 +1,28 @@
+{
+  "name": "makers",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run db:up && npm run db:sync && npm run dev:all",
+    "dev:all": "concurrently \"npm run dev -w apps/frontend\" \"npm run dev -w apps/backend\"",
+    "db:up": "docker-compose up -d",
+    "db:down": "docker-compose down",
+    "db:sync": "cd apps/backend && npx prisma generate && npx prisma migrate dev --name init && npx prisma db seed",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "@metaplex-foundation/mpl-token-metadata": "^3.4.0",
+    "@metaplex-foundation/umi": "^1.5.1",
+    "@metaplex-foundation/umi-bundle-defaults": "^1.5.1",
+    "@solana/web3.js": "^1.98.4",
+    "bs58": "^6.0.0"
+  }
+}

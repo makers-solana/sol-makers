@@ -1,0 +1,115 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Villa {
+  id             String   @id @default(cuid())
+  name           String
+  location       String
+  description    String
+  legalStructure String   @default("FRACTIONAL_OWNERSHIP")
+  totalShares    Int      @default(100)
+  pricePerShare  Float
+  totalValue     Float
+  images         String[]
+  nftAddress     String?  @unique
+  availableShares Int     @default(100)
+  chain          String?  @default("ethereum")
+  
+  // ERP Fields
+  occupancyStatus String   @default("VACANT") // VACANT, OCCUPIED, UNDER_MAINTENANCE
+  nightlyRate     Float    @default(0)
+  ery             Float    @default(0)        // (%) Estimated Rental Yield
+  ary             Float    @default(0)        // (%) Annualized Rental Yield
+  totalTokens     Int      @default(0)        // Total supply for fractionalization
+  tokensSold      Int      @default(0)        // Progress tracking
+  bedrooms        Int      @default(0)
+  bathrooms       Int      @default(0)
+  sqm             Float    @default(0)
+  lastMaintenance DateTime @default(now())
+  nextMaintenance DateTime?
+  listingId      Int?      // Thirdweb Marketplace Listing ID
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  shares         Share[]
+  revenues       Revenue[]
+  maintenanceLogs MaintenanceLog[]
+  marketPrices    MarketPrice[]
+}
+
+model MaintenanceLog {
+  id          String   @id @default(cuid())
+  villaId     String
+  villa       Villa    @relation(fields: [villaId], references: [id])
+  activity    String   // e.g., "Pool cleaning", "Roof repair"
+  cost        Float
+  date        DateTime @default(now())
+  performer   String   // Name of the contractor or staff
+  status      String   @default("COMPLETED") // SCHEDULED, IN_PROGRESS, COMPLETED
+}
+
+model MarketPrice {
+  id          String   @id @default(cuid())
+  villaId     String
+  villa       Villa    @relation(fields: [villaId], references: [id])
+  price       Float    // Price in the third/secondary market
+  recordedAt  DateTime @default(now())
+  source      String   // e.g., "OpenSea", "Makers Market"
+}
+
+model Share {
+  id        String   @id @default(cuid())
+  villaId   String
+  villa     Villa    @relation(fields: [villaId], references: [id])
+  ownerAddress String 
+  amount    Int      @default(1)
+  boughtAt  DateTime @default(now())
+  
+  @@unique([villaId, ownerAddress])
+}
+
+model Revenue {
+  id        String   @id @default(cuid())
+  villaId   String
+  villa     Villa    @relation(fields: [villaId], references: [id])
+  amount    Float    
+  period    DateTime 
+  distributedAt DateTime?
+  payouts   Payout[]
+}
+
+model Payout {
+  id           String   @id @default(cuid())
+  revenueId    String
+  revenue      Revenue  @relation(fields: [revenueId], references: [id])
+  ownerAddress String
+  amount       Float
+  status       String   @default("PENDING") 
+  txHash       String?  
+  createdAt    DateTime @default(now())
+}
+
+model User {
+  id        String   @id @default(cuid())
+  address   String   @unique
+  name      String?
+  role      Role     @default(INVESTOR)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  INVESTOR
+}

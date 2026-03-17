@@ -1,0 +1,34 @@
+{
+  "name": "Makers Villa Bali",
+  "symbol": "MVB",
+  "description": "Premium fractionalized villa asset 'Makers Villa Bali' on Solana. 40,000 shares available.",
+  "image": "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&q=80&w=800",
+  "external_url": "https://makers.id",
+  "attributes": [
+    {
+      "trait_type": "Location",
+      "value": "Indonesia"
+    },
+    {
+      "trait_type": "Bedrooms",
+      "value": "3"
+    },
+    {
+      "trait_type": "Bathrooms",
+      "value": "3"
+    },
+    {
+      "trait_type": "Asset Type",
+      "value": "Fractionalized Hospitality"
+    }
+  ],
+  "properties": {
+    "files": [
+      {
+        "uri": "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&q=80&w=800",
+        "type": "image/jpeg"
+      }
+    ],
+    "category": "image"
+  }
+}
