@@ -2,7 +2,7 @@
 
 This project is a high-fidelity Asset Management System for luxury villas, enabling users to own fractional shares via NFTs on both **Ethereum (Sepolia)** and **Solana (Devnet)**, with dynamic yields and a professional ERP dashboard.
 
-## 🚀 Getting Started
+## Getting Started
 
 ### 1. Prerequisites
 
@@ -57,22 +57,22 @@ npm run dev
 
 ---
 
-## 🏗️ Project Architecture
+## Project Architecture
 
-### 📊 Backend (`apps/backend`)
+### Backend (`apps/backend`)
 
 - **Framework**: Next.js 14 (App Router)
-- **Admin UI**: A professional, dark theme for asset control.
+- **Admin UI**: A dark theme for asset control.
 - **ORM**: Prisma with PostgreSQL.
 - **Features**: Real-time supply tracking (`totalSupply` integration), multi-chain administrative connections, and asset filtering.
 
-### 🪙 Frontend (`apps/frontend`)
+### Frontend (`apps/frontend`)
 
 - **Framework**: Vite + React
 - **Web3 Tools**: Thirdweb SDK (EVM) and Solana Wallet Adapter.
 - **Features**: Fractional property investment, immersive 3D-inspired glassmorphism design, and dual-chain wallet support.
 
-### 🏨 Primary Assets (Devnet)
+### Primary Assets (Devnet)
 
 The system is currently configured to track and manage the following exclusive assets:
 
