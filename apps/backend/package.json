@@ -9,12 +9,16 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@irys/bundles": "^0.0.5",
+    "@irys/upload-core": "^0.0.10",
+    "@metaplex-foundation/umi-uploader-irys": "^1.5.0",
     "@prisma/client": "^5.10.2",
     "@solana/wallet-adapter-base": "^0.9.27",
     "@solana/wallet-adapter-react": "^0.15.39",
     "@solana/wallet-adapter-react-ui": "^0.9.39",
     "@solana/wallet-adapter-wallets": "^0.19.37",
     "@solana/web3.js": "^1.98.4",
+    "commander": "^14.0.3",
     "dotenv": "^17.3.1",
     "ejs": "^5.0.1",
     "lucide-react": "^0.577.0",

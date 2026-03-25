@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { ConnectButton, TransactionWidget, useActiveAccount, useReadContract } from "thirdweb/react";
+import { ConnectButton, useReadContract } from "thirdweb/react";
 import { inAppWallet, createWallet } from "thirdweb/wallets";
 import { defineChain, getContract } from "thirdweb";
 import { buyFromListing, getAllValidListings } from "thirdweb/extensions/marketplace";
-import { claimTo, getActiveClaimCondition, totalSupply } from "thirdweb/extensions/erc1155";
+import { totalSupply } from "thirdweb/extensions/erc1155";
 import { client } from "./lib/thirdweb";
-import { Wallet, MapPin, TrendingUp, ShieldCheck, Activity, Bed, Bath, Layout, Calculator, Clock, ChevronRight, CheckCircle2, CloudLightning } from 'lucide-react';
+import { Wallet, MapPin, TrendingUp, ShieldCheck, Activity, Bed, Bath, Layout, Calculator, Clock, ChevronRight, CheckCircle2, CloudLightning, Sun, Moon } from 'lucide-react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { Transaction, SystemProgram, PublicKey } from '@solana/web3.js';
@@ -32,61 +32,72 @@ export default function Dashboard() {
   const [purchaseSuccess, setPurchaseSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [claimConditionError, setClaimConditionError] = useState<string | null>(null);
-  const [selectedNetwork, setSelectedNetwork] = useState<'ethereum' | 'solana'>('ethereum');
-  const activeAccount = useActiveAccount();
-  
+  const [solPriceUsd, setSolPriceUsd] = useState<number>(150);
+  const [idrRate, setIdrRate] = useState<number>(15500 * 150);
+  const [referralAddress, setReferralAddress] = useState<string>('');
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+
   // Solana Wallet Adapter hooks
   const { publicKey, sendTransaction, connected: solanaConnected } = useWallet();
   const { connection } = useConnection();
 
-  // Fetch real-time token supply for Sepolia asset
-  const { data: ethTotalSold } = useReadContract(
-    totalSupply,
-    {
-      contract: getContract({
-        client,
-        chain: defineChain(11155111),
-        address: "0x2B91E94Ce68cDf1321269c135Fbb12A2C1F781E5",
-      }),
-      id: 0n,
-    }
-  );
-
-  // Note: For Solana Supply, we would use getMintSupply or similar, 
-  // but for now we'll mock it or use the tokensSold property.
+  // we'll mock it or use the tokensSold property.
   const solTotalSold = 1; // Real-time value from the mint we just did
 
   useEffect(() => {
-    fetchVillas();
-  }, []);
+    document.body.className = theme === 'dark' ? 'dark' : '';
+  }, [theme]);
 
   useEffect(() => {
-    // Only check claim condition for Ethereum (Sepolia) assets
-    if (selectedVilla && selectedVilla.chain === 'ethereum' && /^0x[a-fA-F0-9]{40}$/.test(selectedVilla.nftAddress)) {
-      checkClaimCondition(selectedVilla.nftAddress);
-    } else {
-      setClaimConditionError(null);
-    }
-  }, [selectedVilla]);
+    fetchVillas();
+    fetchSolPrice();
+    extractReferral();
+    const interval = setInterval(fetchSolPrice, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
-  const checkClaimCondition = async (address: string) => {
+  const extractReferral = () => {
     try {
-      setClaimConditionError(null);
-      await getActiveClaimCondition({
-        contract: getContract({
-          client,
-          chain: defineChain(11155111),
-          address: address,
-        }),
-        tokenId: 0n,
-      });
-    } catch (err: any) {
-      console.warn("Claim condition check failed:", err);
-      if (err.message.includes("Claim condition not found")) {
-        setClaimConditionError("No active claim condition found for Token ID 0 on Sepolia.");
+      const params = new URLSearchParams(window.location.search);
+      const ref = params.get('ref');
+      if (ref && ref.length > 30) {
+        setReferralAddress(ref);
+        console.log("Referral address detected from URL:", ref);
       }
+    } catch (e) {
+      console.warn("Failed to extract referral from URL", e);
     }
   };
+
+  const copyReferralLink = () => {
+    if (!publicKey) {
+      alert("Please connect your Solana wallet first to generate your referral link!");
+      return;
+    }
+    const link = `${window.location.origin}${window.location.pathname}?ref=${publicKey.toBase58()}`;
+    navigator.clipboard.writeText(link);
+    alert("Referral link copied to clipboard: " + link);
+  };
+
+  const fetchSolPrice = async () => {
+    try {
+      const resp = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd,idr');
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.solana) {
+          setSolPriceUsd(data.solana.usd);
+          setIdrRate(data.solana.idr);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to fetch SOL price", e);
+    }
+  };
+
+  useEffect(() => {
+    setClaimConditionError(null);
+  }, [selectedVilla]);
+
 
   const fetchVillas = async () => {
     try {
@@ -95,40 +106,78 @@ export default function Dashboard() {
       const backendVillas = [
         {
           id: 'v1',
-          name: 'Makers Villa Bali',
-          location: 'Indonesia',
-          nftAddress: '0x2B91E94Ce68cDf1321269c135Fbb12A2C1F781E5',
-          pricePerShare: 0.035, // ETH (New requirement)
-          ery: '8.5',
+          name: 'Uluwatu Cliffside Villa',
+          location: 'Uluwatu, Bali',
+          nftAddress: '8bw4qgyQnChaa91hxUViB8gMLjmC39UvFsPMydwRmUN8', // Default seller
+          pricePerShareUsd: 100,
+          ery: '12.5',
+          ary: '12.5',
           totalTokens: 40000,
-          tokensSold: 0,
+          tokensSold: 12500,
+          bedrooms: 4,
+          bathrooms: 4,
+          sqm: 850,
+          occupancyStatus: 'Active',
+          images: ['/assets/villa_uluwatu_1774384936394.png'],
+          description: 'Premium fractionalized modern cliffside villa in Uluwatu, Bali. 40,000 shares available.',
+          chain: 'solana'
+        },
+        {
+          id: 'v2',
+          name: 'Ubud Jungle Retreat',
+          location: 'Ubud, Bali',
+          nftAddress: '8bw4qgyQnChaa91hxUViB8gMLjmC39UvFsPMydwRmUN8',
+          pricePerShareUsd: 100,
+          ery: '9.2',
+          ary: '9.2',
+          totalTokens: 40000,
+          tokensSold: 5400,
           bedrooms: 3,
           bathrooms: 3,
           sqm: 450,
           occupancyStatus: 'Active',
-          images: ['https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&q=80&w=800'],
-          description: 'Premium fractionalized villa asset "Makers Villa Bali" (Edition Drop) - 40,000 shares available at 0.035 ETH each.',
-          chain: 'ethereum'
+          images: ['/assets/villa_ubud_1774384976227.png'],
+          description: 'Luxury tropical jungle villa in Ubud, surrounded by palm trees. 40,000 shares available.',
+          chain: 'solana'
         },
         {
-          id: 'v2',
-          name: 'Solana Sunset Villa',
-          location: 'Uluwatu, Bali',
-          nftAddress: 'BxUy8Xyj4ZXJsc6m6HdqPNQT9UY35dbUM4bLMVHCBZoS',
-          pricePerShare: 0.48, // SOL (Equivalent to 0.035 ETH)
-          ery: '10.2',
-          totalTokens: 5000,
-          tokensSold: 1, // Reflecting the successful mint
-          bedrooms: 4,
-          bathrooms: 4,
-          sqm: 600,
+          id: 'v3',
+          name: 'Seminyak Beachfront Villa',
+          location: 'Seminyak, Bali',
+          nftAddress: '8bw4qgyQnChaa91hxUViB8gMLjmC39UvFsPMydwRmUN8',
+          pricePerShareUsd: 100,
+          ery: '14.0',
+          ary: '14.0',
+          totalTokens: 40000,
+          tokensSold: 39500,
+          bedrooms: 5,
+          bathrooms: 5,
+          sqm: 1200,
           occupancyStatus: 'Active',
-          images: ['https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&q=80&w=800'],
-          description: 'Luxurious Solana-based villa asset. High yield potential in the heart of Uluwatu.',
+          images: ['/assets/villa_seminyak_1774385029337.png'],
+          description: 'Exclusive luxury beachfront villa in Seminyak, perfect for sunset views. 40,000 shares available.',
+          chain: 'solana'
+        },
+        {
+          id: 'v4',
+          name: 'Canggu Eco Villa',
+          location: 'Canggu, Bali',
+          nftAddress: '8bw4qgyQnChaa91hxUViB8gMLjmC39UvFsPMydwRmUN8',
+          pricePerShareUsd: 100,
+          ery: '10.5',
+          ary: '10.5',
+          totalTokens: 40000,
+          tokensSold: 21000,
+          bedrooms: 3,
+          bathrooms: 2,
+          sqm: 350,
+          occupancyStatus: 'Active',
+          images: ['/assets/villa_canggu_1774385051669.png'],
+          description: 'Minimalist eco-friendly villa with stunning rice terrace views in Canggu. 40,000 shares available.',
           chain: 'solana'
         }
       ];
-      
+
       setVillas(backendVillas);
       setIsLoading(false);
     } catch (err) {
@@ -140,8 +189,7 @@ export default function Dashboard() {
 
   const calculateReturn = (villa: any) => {
     const yieldRate = parseFloat(villa.ery) / 100;
-    const currency = selectedNetwork === 'ethereum' ? 'ETH' : 'SOL';
-    return `${(investAmount * villa.pricePerShare * yieldRate).toLocaleString(undefined, { maximumFractionDigits: 4 })} ${currency}`;
+    return `${(investAmount * villa.pricePerShare * yieldRate).toLocaleString(undefined, { maximumFractionDigits: 4 })} SOL`;
   };
 
   const handleSolanaAcquisition = async () => {
@@ -151,21 +199,57 @@ export default function Dashboard() {
     }
 
     try {
-      console.log("Starting Solana Transaction...");
-      // Simulate/Implement an actual SOL transfer for acquisition
-      // In a real scenario, this would interact with a smart contract or Marketplace
-      const transaction = new Transaction().add(
-        SystemProgram.transfer({
-          fromPubkey: publicKey,
-          toPubkey: new PublicKey(selectedVilla.nftAddress), // Sending to the asset mint (simplification for demo)
-          lamports: Math.floor(investAmount * selectedVilla.pricePerShare * 1e9),
-        })
-      );
+      console.log("Starting Solana Transaction with $100 peg and Referral Split...");
+
+      const pricePerShareSol = 100 / solPriceUsd;
+      const totalLamports = Math.floor(investAmount * pricePerShareSol * 1e9);
+      const sellerPubkey = new PublicKey(selectedVilla.nftAddress.length > 20 ? selectedVilla.nftAddress : '8bw4qgyQnChaa91hxUViB8gMLjmC39UvFsPMydwRmUN8');
+
+      const transaction = new Transaction();
+
+      if (referralAddress && referralAddress.length > 20) {
+        try {
+          const referralPubkey = new PublicKey(referralAddress);
+          const referralLamports = Math.floor(totalLamports * 0.1);
+          const sellerLamports = totalLamports - referralLamports;
+
+          transaction.add(
+            SystemProgram.transfer({
+              fromPubkey: publicKey,
+              toPubkey: sellerPubkey,
+              lamports: sellerLamports,
+            }),
+            SystemProgram.transfer({
+              fromPubkey: publicKey,
+              toPubkey: referralPubkey,
+              lamports: referralLamports,
+            })
+          );
+          console.log(`Split transaction: 90% logic engaged. 10% to ${referralAddress}`);
+        } catch (e) {
+          console.warn("Invalid referral address, sending 100% to seller");
+          transaction.add(
+            SystemProgram.transfer({
+              fromPubkey: publicKey,
+              toPubkey: sellerPubkey,
+              lamports: totalLamports,
+            })
+          );
+        }
+      } else {
+        transaction.add(
+          SystemProgram.transfer({
+            fromPubkey: publicKey,
+            toPubkey: sellerPubkey,
+            lamports: totalLamports,
+          })
+        );
+      }
 
       const signature = await sendTransaction(transaction, connection);
       console.log("Solana Transaction Signature:", signature);
       alert(`Transaction sent! Signature: ${signature}`);
-      
+
       handleTransactionComplete();
     } catch (error: any) {
       console.error("Solana Transaction failed:", error);
@@ -176,8 +260,8 @@ export default function Dashboard() {
   const handleTransactionComplete = () => {
     setPurchaseSuccess(true);
     setTimeout(() => {
-        setPurchaseSuccess(false);
-        setSelectedVilla(null);
+      setPurchaseSuccess(false);
+      setSelectedVilla(null);
     }, 8000);
   };
 
@@ -194,373 +278,294 @@ export default function Dashboard() {
     createWallet("app.phantom"), // Added Phantom for Solana support
   ];
 
-  // Marketplace V3 Contract on Sepolia
-  const marketplaceContract = getContract({
-    client,
-    chain: defineChain(11155111),
-    address: "0x088362D5209993e7E6A8004f281bB4b3778E00E3", 
-  });
 
-  if (isLoading) return <div style={{ backgroundColor: '#050a0a', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#5eead4' }}>Loading Assets...</div>;
+  if (isLoading) return <div style={{ backgroundColor: 'var(--bg-color)', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#9945FF', fontWeight: 800 }}>Loading Solana Villas...</div>;
 
   return (
-    <div className="dashboard-container" style={{ backgroundColor: '#050a0a', minHeight: '100vh', color: '#e2e8f0' }}>
-      <nav className="navbar glass-card" style={{ 
-        position: 'sticky', 
-        top: '20px', 
-        zIndex: 1000, 
-        borderRadius: '24px', 
-        margin: '0 40px 40px 40px', 
-        border: '1px solid rgba(13, 148, 136, 0.2)', 
-        background: 'rgba(5, 10, 10, 0.8)', 
-        backdropFilter: 'blur(12px)',
-        padding: '15px 30px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-color)', color: 'var(--text-color)' }}>
+      <nav style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        padding: '20px 40px', 
+        backgroundColor: 'var(--nav-bg)', 
+        backdropFilter: 'blur(20px)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
+        borderBottom: '1px solid var(--nav-border)'
       }}>
-        <div className="nav-logo" style={{ color: '#0d9488', fontWeight: 900, fontSize: '1.5rem', cursor: 'pointer' }}>MAKERS.</div>
-        
-        <div className="nav-menu" style={{ display: 'flex', gap: '32px' }}>
-          {['Home', 'Marketplace', 'goLearn', 'About Us'].map((item) => (
-            <a key={item} href={`#${item.toLowerCase().replace(' ', '')}`} style={{ 
-              color: item === 'Marketplace' ? '#5eead4' : '#94a3b8', 
-              textDecoration: 'none', 
-              fontSize: '0.9rem', 
-              fontWeight: 600, 
-              transition: 'color 0.2s'
-            }}>
-              {item}
-            </a>
-          ))}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <img 
+            src="https://app.thehistorymaker.io/makers-dark01.png" 
+            alt="MAKERS Logo" 
+            style={{ width: '40px', height: '40px', objectFit: 'contain' }} 
+          />
+          <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900, background: 'linear-gradient(90deg, #9945FF, #14F195)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>MAKERS</h1>
         </div>
 
-        <div className="nav-actions" style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
-          {/* Network Switcher */}
-          <div className="network-switcher glass-card" style={{ 
-            display: 'flex', 
-            background: 'rgba(255,255,255,0.03)', 
-            padding: '4px', 
-            borderRadius: '14px', 
-            border: '1px solid rgba(255,255,255,0.05)' 
-          }}>
-            <button 
-              onClick={() => setSelectedNetwork('ethereum')}
-              style={{
-                padding: '8px 16px',
-                borderRadius: '10px',
-                border: 'none',
-                background: selectedNetwork === 'ethereum' ? '#0d9488' : 'transparent',
-                color: selectedNetwork === 'ethereum' ? 'white' : '#94a3b8',
-                fontSize: '0.8rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}
-            >
-              <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: selectedNetwork === 'ethereum' ? 'white' : '#6366f1' }}></div>
-              Ethereum
-            </button>
-            <button 
-              onClick={() => setSelectedNetwork('solana')}
-              style={{
-                padding: '8px 16px',
-                borderRadius: '10px',
-                border: 'none',
-                background: selectedNetwork === 'solana' ? '#0d9488' : 'transparent',
-                color: selectedNetwork === 'solana' ? 'white' : '#94a3b8',
-                fontSize: '0.8rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}
-            >
-              <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: selectedNetwork === 'solana' ? 'white' : '#14f195' }}></div>
-              Solana
-            </button>
-          </div>
-
-          {selectedNetwork === 'ethereum' ? (
-            <ConnectButton 
-              client={client} 
-              wallets={wallets}
-              theme={"dark"}
-              chains={[defineChain(11155111)]}
-              connectModal={{
-                showThirdwebBranding: false,
-              }}
-              connectButton={{
-                label: "Investor Login",
-                className: "thirdweb-connect-btn"
-              }}
-            />
-          ) : (
-            <div className="solana-connect-wrapper">
-              <WalletMultiButton className="solana-adapter-btn" />
-            </div>
-          )}
-        </div>
-      </nav>
-
-      <main className="dashboard-grid" style={{ padding: '40px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '30px' }}>
-        {villas
-          .filter(villa => villa.chain === selectedNetwork)
-          .map((villa) => {
-            // Override with real-time data
-            let tokensSold = villa.tokensSold;
-            if (villa.id === 'v1' && ethTotalSold !== undefined) {
-              tokensSold = Number(ethTotalSold);
-            } else if (villa.id === 'v2') {
-              tokensSold = solTotalSold;
-            }
-
-            return (
-          <div key={villa.id} className="glass-card" style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            borderRadius: '24px', 
-            overflow: 'hidden', 
-            border: '1px solid rgba(255,255,255,0.05)',
-            background: 'rgba(255,255,255,0.02)',
-            transition: 'transform 0.3s'
-          }}>
-            <div style={{ position: 'relative', height: '240px' }}>
-              <img src={villa.images?.[0] || 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&q=80&w=800'} alt={villa.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              <div style={{ position: 'absolute', top: '16px', left: '16px', backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', padding: '6px 12px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 700, color: '#5eead4', border: '1px solid rgba(94, 234, 212, 0.3)' }}>
-                ERY {villa.ery}%
-              </div>
-              <div style={{ position: 'absolute', bottom: '16px', right: '16px', backgroundColor: 'rgba(13, 148, 136, 0.9)', padding: '6px 12px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 800, color: 'white' }}>
-                ${villa.pricePerShare} / token
-              </div>
-            </div>
-
-            <div style={{ padding: '24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>{villa.name}</h3>
-                <TrendingUp size={20} color="#0d9488" />
-              </div>
-              <p style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: '#94a3b8', margin: '0 0 20px 0' }}>
-                <MapPin size={14} /> {villa.location}
-              </p>
-
-              <div style={{ display: 'flex', gap: '16px', marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}><Bed size={16} color="#0d9488"/> {villa.bedrooms} Beds</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}><Bath size={16} color="#0d9488"/> {villa.bathrooms} Baths</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}><Layout size={16} color="#0d9488"/> {villa.sqm} m²</div>
-              </div>
-
-              <div style={{ marginBottom: '20px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '8px' }}>
-                  <span style={{ color: '#94a3b8' }}>Funding Progress</span>
-                  <span style={{ fontWeight: 700, color: '#5eead4' }}>{((tokensSold / villa.totalTokens) * 100).toFixed(1)}%</span>
-                </div>
-                <div style={{ width: '100%', height: '8px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
-                  <div style={{ width: `${(tokensSold / villa.totalTokens) * 100}%`, height: '100%', backgroundColor: '#0d9488', borderRadius: '4px' }}></div>
-                </div>
-                <div style={{ marginTop: '6px', fontSize: '0.7rem', color: '#64748b' }}>
-                  {tokensSold.toLocaleString()} / {villa.totalTokens.toLocaleString()} tokens sold
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
-                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginBottom: '4px' }}>ANNUAL YIELD (ARY)</div>
-                  <div style={{ fontSize: '1rem', fontWeight: 800, color: '#0d9488' }}>{villa.ary}%</div>
-                </div>
-                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginBottom: '4px' }}>STATUS</div>
-                  <div style={{ fontSize: '1rem', fontWeight: 800, color: '#5eead4' }}>{villa.occupancyStatus}</div>
-                </div>
-              </div>
-
+          <div style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
+            <div style={{ display: 'flex', backgroundColor: 'var(--card-border)', padding: '4px', borderRadius: '12px' }}>
               <button 
-                onClick={() => setSelectedVilla(villa)}
-                style={{ width: '100%', padding: '14px', borderRadius: '16px', border: '1px solid #0d9488', background: 'transparent', color: '#5eead4', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
+                onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+                style={{
+                  padding: '8px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: 'transparent',
+                  color: 'var(--text-color)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.2s'
+                }}
+                title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
               >
-                Analyze & Invest <ChevronRight size={18} />
+                {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
               </button>
             </div>
+  
+            <div className="solana-connect-button-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {publicKey && (
+                <button 
+                  onClick={copyReferralLink}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '10px',
+                    border: '1px solid #9945FF',
+                    background: 'transparent',
+                    color: '#9945FF',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  Copy Referral Link
+                </button>
+              )}
+              <div className="solana-adapter-wrapper">
+                <WalletMultiButton style={{ backgroundColor: '#9945FF', borderRadius: '12px', height: '44px', padding: '0 24px' }} />
+              </div>
+            </div>
           </div>
-          );
-        })}
+      </nav>
+
+      <main className="dashboard-grid" style={{ padding: '60px 40px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '40px' }}>
+        {villas.map((villa) => {
+          let tokensSold = villa.tokensSold;
+          if (villa.id === 'v2') {
+            tokensSold = solTotalSold;
+          }
+
+            return (
+              <div key={villa.id} style={{
+                display: 'flex',
+                flexDirection: 'column',
+                borderRadius: '24px',
+                overflow: 'hidden',
+                border: '1px solid var(--card-border)',
+                background: 'var(--card-bg)',
+                transition: 'all 0.3s',
+                boxShadow: theme === 'light' ? '0 10px 25px -5px rgba(0, 0, 0, 0.05)' : '0 10px 25px -5px rgba(0, 0, 0, 0.3)'
+              }}>
+                <div style={{ position: 'relative', height: '240px' }}>
+                  <img src={villa.images?.[0] || 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&q=80&w=800'} alt={villa.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <div style={{ position: 'absolute', top: '16px', left: '16px', backgroundColor: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(8px)', padding: '6px 12px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 700, color: '#9945FF', border: '1px solid rgba(153, 69, 255, 0.2)' }}>
+                    ERY {villa.ery}%
+                  </div>
+                  <div style={{ position: 'absolute', bottom: '16px', right: '16px', background: 'linear-gradient(90deg, #9945FF, #14F195)', padding: '6px 14px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 800, color: 'white', border: 'none', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
+                    {villa.chain === 'solana' ? `◎ ${(100 / solPriceUsd).toFixed(3)} / NFT` : `$${villa.pricePerShare} / token`}
+                  </div>
+                </div>
+
+                <div style={{ padding: '24px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-color)' }}>{villa.name}</h3>
+                    <TrendingUp size={20} color="#9945FF" />
+                  </div>
+                  <p style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 20px 0' }}>
+                    <MapPin size={14} /> {villa.location}
+                  </p>
+
+                  <div style={{ display: 'flex', gap: '16px', marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid var(--bg-color)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-muted)' }}><Bed size={16} color="#9945FF" /> {villa.bedrooms} Beds</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-muted)' }}><Bath size={16} color="#9945FF" /> {villa.bathrooms} Baths</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-muted)' }}><Layout size={16} color="#9945FF" /> {villa.sqm} m²</div>
+                  </div>
+
+                  <div style={{ marginBottom: '20px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '8px' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Funding Progress</span>
+                      <span style={{ fontWeight: 800, color: '#14f195' }}>{((tokensSold / villa.totalTokens) * 100).toFixed(1)}%</span>
+                    </div>
+                    <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--bg-color)', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{ width: `${(tokensSold / villa.totalTokens) * 100}%`, height: '100%', backgroundColor: '#14f195', borderRadius: '4px' }}></div>
+                    </div>
+                    <div style={{ marginTop: '6px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                      {tokensSold.toLocaleString()} / {villa.totalTokens.toLocaleString()} tokens sold
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
+                    <div style={{ background: 'var(--surface-muted)', padding: '12px', borderRadius: '16px', border: '1px solid var(--card-border)' }}>
+                      <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '4px' }}>ANNUAL YIELD (ARY)</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 800, color: '#9945FF' }}>{villa.ary}%</div>
+                    </div>
+                    <div style={{ background: 'var(--surface-muted)', padding: '12px', borderRadius: '16px', border: '1px solid var(--card-border)' }}>
+                      <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '4px' }}>STATUS</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 800, color: '#14f195' }}>{villa.occupancyStatus}</div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setSelectedVilla(villa)}
+                    style={{ width: '100%', padding: '14px', borderRadius: '16px', border: '1px solid #9945FF', background: 'transparent', color: '#9945FF', fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
+                  >
+                    Analyze & Invest <ChevronRight size={18} />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
       </main>
 
       {selectedVilla && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(12px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 }}>
-          <div className="glass-card" style={{ width: '1000px', maxHeight: '95vh', overflowY: 'auto', borderRadius: '32px', border: '1px solid rgba(255,255,255,0.1)', background: '#0a0f0f', padding: purchaseSuccess ? '80px 40px' : '40px' }}>
-            
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'var(--modal-overlay)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 }}>
+          <div style={{ backgroundColor: 'var(--card-bg)', borderRadius: '32px', border: '1px solid var(--card-border)', width: '90%', maxWidth: '1000px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', padding: '40px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+            <button
+              onClick={() => setSelectedVilla(null)}
+              style={{ position: 'absolute', top: '24px', right: '24px', background: 'var(--bg-color)', border: 'none', width: '40px', height: '40px', borderRadius: '50%', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold' }}
+            >
+              ✕
+            </button>
+
             {purchaseSuccess ? (
-                <div style={{ textAlign: 'center', animation: 'fadeIn 0.5s' }}>
-                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
-                        <CheckCircle2 size={80} color="#0d9488" />
-                    </div>
-                    <h2 style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '16px', color: 'white' }}>Property Ownership Confirmed!</h2>
-                    <p style={{ color: '#94a3b8', fontSize: '1.2rem', maxWidth: '500px', margin: '0 auto 40px' }}>
-                        Congratulations! The transaction was successful. You now hold <strong>{investAmount} shares</strong> of {selectedVilla.name} in your secure wallet.
-                    </p>
-                    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '24px', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)', display: 'inline-block', minWidth: '340px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                            <span style={{ color: '#64748b' }}>Asset Name</span>
-                            <span style={{ fontWeight: 600 }}>{selectedVilla.name}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                            <span style={{ color: '#64748b' }}>Shares Acquired</span>
-                            <span style={{ fontWeight: 600 }}>{investAmount} Tokens</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                            <span style={{ color: '#64748b' }}>Total Value</span>
-                            <span style={{ fontWeight: 600 }}>${(investAmount * selectedVilla.pricePerShare).toLocaleString()}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ color: '#64748b' }}>Status</span>
-                            <span style={{ fontWeight: 600, color: '#0d9488' }}>On-Chain Confirmed</span>
-                        </div>
-                    </div>
+              <div style={{ textAlign: 'center', padding: '60px 0' }}>
+                <div style={{ width: '80px', height: '80px', backgroundColor: 'var(--success-bg)', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '0 auto 24px auto' }}>
+                  <CheckCircle2 color="#10b981" size={48} />
                 </div>
+                <h2 style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '16px', color: 'var(--text-color)' }}>Investment Successful!</h2>
+                <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', maxWidth: '500px', margin: '0 auto 30px auto' }}>
+                  You have successfully acquired {investAmount} shares of {selectedVilla.name}. Your ownership certificate will be issued to your wallet shortly.
+                </p>
+                <button
+                  onClick={() => setSelectedVilla(null)}
+                  style={{ background: 'linear-gradient(90deg, #9945FF, #14F195)', border: 'none', color: 'white', padding: '16px 40px', borderRadius: '16px', fontWeight: 800, fontSize: '1rem', cursor: 'pointer', boxShadow: '0 4px 15px rgba(153, 69, 255, 0.3)' }}
+                >
+                  Back to Dashboard
+                </button>
+              </div>
             ) : (
-                <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px' }}>
-                    <div>
-                        <h2 style={{ fontSize: '2rem', fontWeight: 900, marginBottom: '8px' }}>{selectedVilla.name}</h2>
-                        <div style={{ display: 'flex', gap: '12px', color: '#94a3b8' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><MapPin size={16}/> {selectedVilla.location}</span>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><ShieldCheck size={16} color="#0d9488"/> Verified Asset</span>
-                        </div>
-                        {claimConditionError && (
-                          <div style={{ marginTop: '12px', background: 'rgba(239, 68, 68, 0.1)', padding: '8px 16px', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Activity size={14} /> {claimConditionError}
-                          </div>
-                        )}
-                    </div>
-                    <button 
-                        onClick={() => setSelectedVilla(null)} 
-                        style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
-                    >
-                        <ChevronRight size={32} style={{ transform: 'rotate(90deg)' }} />
-                    </button>
-                    </div>
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '40px' }}>
+                  <h2 style={{ fontSize: '2rem', fontWeight: 900, margin: 0, color: 'var(--text-color)' }}>{selectedVilla.name}</h2>
+                  <div style={{ fontSize: '1rem', fontWeight: 700, color: '#9945FF' }}>{selectedVilla.location}</div>
+                </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '40px' }}>
-                    <div>
-                        <img src={selectedVilla.images?.[0] || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&q=80&w=800'} alt={selectedVilla.name} style={{ width: '100%', borderRadius: '24px', marginBottom: '24px' }} />
-                        <div style={{ display: 'flex', gap: '10px', marginBottom: '30px' }}>
-                        <button style={{ backgroundColor: '#0d9488', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '12px', fontWeight: 600 }}>Overview</button>
-                        <button style={{ backgroundColor: 'rgba(255,255,255,0.05)', color: '#94a3b8', border: 'none', padding: '10px 20px', borderRadius: '12px', fontWeight: 600 }}>Legal Structure</button>
-                        </div>
-                        <div style={{ color: '#94a3b8', fontSize: '0.95rem', lineHeight: '1.6' }}>
-                        {selectedVilla.description || `This premium RWA asset represents a ${selectedVilla.bedrooms}-bedroom villa in ${selectedVilla.location}. Fractionalized into ${selectedVilla.totalTokens.toLocaleString()} tokens, it offers a unique entry into the Bali hospitality market with audited yields.`}
-                        </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2.5rem' }}>
+                  <div>
+                    <img src={selectedVilla.images?.[0] || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&q=80&w=800'} alt={selectedVilla.name} style={{ width: '100%', borderRadius: '24px', marginBottom: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
+                    <div style={{ display: 'flex', gap: '10px', marginBottom: '30px' }}>
+                      <button style={{ backgroundColor: '#9945FF', color: 'white', border: 'none', padding: '12px 24px', borderRadius: '12px', fontWeight: 700 }}>Overview</button>
+                      <button style={{ backgroundColor: 'var(--bg-color)', color: 'var(--text-muted)', border: 'none', padding: '12px 24px', borderRadius: '12px', fontWeight: 700 }}>Legal Structure</button>
                     </div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: '1.7' }}>
+                      {selectedVilla.description || `This premium RWA asset represents a ${selectedVilla.bedrooms}-bedroom villa in ${selectedVilla.location}. Fractionalized into ${selectedVilla.totalTokens.toLocaleString()} tokens, it offers a unique entry into the Bali hospitality market with audited yields.`}
+                    </div>
+                  </div>
 
-                    <div>
-                        <div style={{ background: 'rgba(13, 148, 136, 0.05)', padding: '24px', borderRadius: '24px', border: '1px solid rgba(13, 148, 136, 0.2)', marginBottom: '24px' }}>
-                        <h4 style={{ margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px', color: '#5eead4' }}>
-                            <Calculator size={20} /> Investment Calculator
-                        </h4>
-                        <div style={{ marginBottom: '16px' }}>
-                            <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '8px' }}>QUANTITY (SHARES)</label>
-                            <input 
-                            type="number" 
-                            value={investAmount} 
-                            onChange={(e) => setInvestAmount(Math.max(1, parseInt(e.target.value) || 1))}
-                            style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', padding: '12px', borderRadius: '12px', color: 'white', fontSize: '1.1rem', fontWeight: 700 }}
-                            />
+                  <div>
+                    <div style={{ background: 'rgba(153, 69, 255, 0.03)', padding: '30px', borderRadius: '24px', border: '1px solid rgba(153, 69, 255, 0.1)', marginBottom: '30px' }}>
+                      <h4 style={{ margin: '0 0 20px 0', display: 'flex', alignItems: 'center', gap: '8px', color: '#9945FF', fontWeight: 800 }}>
+                        <Calculator size={20} /> Investment Calculator
+                      </h4>
+                      <div style={{ marginBottom: '24px' }}>
+                        <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 800, marginBottom: '8px' }}>QUANTITY (SHARES)</label>
+                        <input
+                          type="number"
+                          value={investAmount}
+                          onChange={(e) => setInvestAmount(Math.max(1, parseInt(e.target.value) || 1))}
+                          style={{ width: '100%', background: 'var(--bg-color)', border: '1px solid var(--card-border)', padding: '16px', borderRadius: '16px', color: 'var(--text-color)', fontSize: '1.25rem', fontWeight: 800 }}
+                        />
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid var(--card-border)' }}>
+                          <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600 }}>Total Asset Price</span>
+                          <span style={{ fontWeight: 900, fontSize: '1.1rem', color: 'var(--text-color)' }}>{(investAmount * (100 / solPriceUsd)).toFixed(3)} SOL</span>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                            <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Total Asset Price</span>
-                            <span style={{ fontWeight: 600, color: 'white' }}>{(investAmount * selectedVilla.pricePerShare).toFixed(3)} {selectedNetwork === 'ethereum' ? 'ETH' : 'SOL'}</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                          <span>Est. USD Cost</span>
+                          <span>${(investAmount * 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.75rem', color: '#64748b' }}>
-                            <span>Est. USD Cost</span>
-                            <span>${(investAmount * selectedVilla.pricePerShare * (selectedNetwork === 'ethereum' ? 2060 : 150)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.75rem', color: '#64748b' }}>
-                            <span>Est. Rupiah (IDR)</span>
-                            <span>Rp {(investAmount * selectedVilla.pricePerShare * 35000000).toLocaleString('id-ID')}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#5eead4', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                            <span style={{ fontSize: '0.85rem' }}>Est. Annual Yield</span>
-                            <span style={{ fontWeight: 900 }}>+ {(investAmount * selectedVilla.pricePerShare * (parseFloat(selectedVilla.ery) / 100)).toFixed(4)} {selectedNetwork === 'ethereum' ? 'ETH' : 'SOL'}</span>
-                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                          <span>Est. Rupiah (IDR)</span>
+                          <span>Rp {(investAmount * 100 * (idrRate / solPriceUsd || 15500)).toLocaleString('id-ID', { maximumFractionDigits: 0 })}</span>
                         </div>
 
                         <div style={{ marginBottom: '24px' }}>
-                        <h4 style={{ fontSize: '0.85rem', color: '#94a3b8', marginBottom: '12px', fontWeight: 600 }}>INSTANT ASSET ACQUISITION</h4>
-                        
-                        {selectedVilla.nftAddress ? (
-                            selectedNetwork === 'ethereum' ? (
-                                <TransactionWidget
-                                    client={client}
-                                    currency={"USD"}
-                                    amount={(investAmount * selectedVilla.pricePerShare * 2060).toFixed(2)}
-                                    transaction={claimTo({
-                                        contract: getContract({
-                                            client,
-                                            chain: defineChain(11155111),
-                                            address: selectedVilla.nftAddress,
-                                        }),
-                                        quantity: BigInt(investAmount),
-                                        to: activeAccount?.address || "",
-                                        tokenId: 0n,
-                                    })}
-                                    onSuccess={handleTransactionComplete}
-                                    showThirdwebBranding={false}
-                                    onError={(error) => {
-                                        console.error("Transaction Error:", error);
-                                        if (error.message.includes("Claim condition not found")) {
-                                            alert("Error: No active claim condition found. Please ensure the asset is ready for acquisition.");
-                                        } else {
-                                            alert(`Transaction failed: ${error.message}`);
-                                        }
-                                    }}
-                                    theme={"dark"}
-                                />
-                            ) : (
-                                <button 
-                                    onClick={handleSolanaAcquisition}
-                                    style={{ 
-                                        width: '100%', 
-                                        padding: '16px', 
-                                        borderRadius: '16px', 
-                                        background: '#0d9488', 
-                                        color: 'white', 
-                                        fontWeight: 800, 
-                                        fontSize: '0.9rem',
-                                        border: 'none',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        justifyContent: 'center',
-                                        alignItems: 'center',
-                                        gap: '10px',
-                                        boxShadow: '0 4px 20px rgba(13, 148, 136, 0.3)'
-                                    }}
-                                >
-                                    <CloudLightning size={20} />
-                                    {publicKey ? `Acquire ${investAmount} Shares (SOL)` : "Connect Wallet to Acquire"}
-                                </button>
-                            )
-                        ) : (
-                            <div style={{ padding: '16px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444', fontSize: '0.85rem' }}>
-                                Invalid NFT Address: {selectedVilla.nftAddress || 'Missing Address'}. This asset cannot be acquired on-chain yet.
-                            </div>
-                        )}
+                          <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 800, marginBottom: '8px' }}>REFERRAL WALLET ADDRESS (OPTIONAL)</label>
+                          <input
+                            type="text"
+                            placeholder="Enter Solana wallet address"
+                            value={referralAddress}
+                            onChange={(e) => setReferralAddress(e.target.value)}
+                            style={{ width: '100%', background: 'var(--bg-color)', border: '1px solid var(--card-border)', padding: '12px', borderRadius: '12px', color: 'var(--text-color)', fontSize: '0.9rem' }}
+                          />
                         </div>
+                      </div>
 
-                        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <ShieldCheck size={20} color="#0d9488" />
-                            <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                                Secured Transaction: Payments and on-chain share distribution are handled synchronously via Thirdweb.
-                            </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#14f195', marginTop: '20px', paddingTop: '12px', borderTop: '1px solid var(--card-border)' }}>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>Est. Annual Yield</span>
+                        <span style={{ fontWeight: 900, fontSize: '1.1rem' }}>+ {(investAmount * (100 / solPriceUsd) * (parseFloat(selectedVilla.ery) / 100)).toFixed(4)} SOL</span>
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: '24px' }}>
+                      <h4 style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '16px', fontWeight: 800 }}>INSTANT ASSET ACQUISITION</h4>
+
+                      {selectedVilla.nftAddress ? (
+                        <button
+                            onClick={handleSolanaAcquisition}
+                            style={{
+                              width: '100%',
+                              padding: '20px',
+                              borderRadius: '20px',
+                              background: 'linear-gradient(90deg, #9945FF, #14F195)',
+                              color: 'white',
+                              fontWeight: 900,
+                              fontSize: '1.1rem',
+                              border: 'none',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              justifyContent: 'center',
+                              alignItems: 'center',
+                              gap: '12px',
+                              boxShadow: '0 8px 25px rgba(153, 69, 255, 0.4)',
+                              transition: 'all 0.3s'
+                            }}
+                          >
+                            <CloudLightning size={24} />
+                            {publicKey ? `Invest ${investAmount} Shares (SOL)` : "Connect Wallet to Invest"}
+                          </button>
+                      ) : (
+                        <div style={{ padding: '16px', background: '#fef2f2', borderRadius: '12px', border: '1px solid #fee2e2', color: '#ef4444', fontSize: '0.85rem' }}>
+                          Invalid NFT Address: {selectedVilla.nftAddress || 'Missing Address'}. This asset cannot be acquired on-chain yet.
                         </div>
+                      )}
                     </div>
+
+                    <div style={{ background: 'var(--surface-muted)', padding: '20px', borderRadius: '20px', border: '1px solid var(--card-border)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <ShieldCheck size={24} color="#14f195" />
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        Secured Transaction: Payments and on-chain share distribution are handled synchronously via Solana Network.
+                      </div>
                     </div>
-                </>
+                  </div>
+                </div>
+              </>
             )}
           </div>
         </div>
