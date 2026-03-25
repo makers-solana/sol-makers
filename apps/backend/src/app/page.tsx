@@ -41,6 +41,16 @@ export default function ERPDashboard() {
     const [villas, setVillas] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showListingModal, setShowListingModal] = useState(false);
+    const [referralStats, setReferralStats] = useState<any>({
+        totalEarned: 12.5,
+        totalReferrals: 8,
+        pendingPayout: 2.1,
+        history: [
+            { date: '2024-03-20', amount: 1.5, villa: 'Uluwatu Cliffside' },
+            { date: '2024-03-22', amount: 2.8, villa: 'Seminyak Oasis' },
+            { date: '2024-03-24', amount: 0.9, villa: 'Ubud Jungle' },
+        ]
+    });
     
     // Hydration guard
     const [hasMounted, setHasMounted] = useState(false);
@@ -143,6 +153,62 @@ export default function ERPDashboard() {
         </div>
     );
 
+    const renderReferrals = () => (
+        <div className="section-content animate-fadeIn">
+            <h2 className="section-title">Referral Program Dashboard</h2>
+            <div className="card-grid" style={{ marginBottom: '40px' }}>
+                <div className="info-card accent-green">
+                    <h4>Total Commissions</h4>
+                    <p className="stat-value">{referralStats.totalEarned} SOL</p>
+                    <div style={{ fontSize: '0.7em', color: 'var(--spotify-gray-lighter)' }}>~$ {(referralStats.totalEarned * 150).toFixed(2)} USD</div>
+                    <DollarSign className="card-icon-bg" />
+                </div>
+                <div className="info-card accent-purple">
+                    <h4>Active Referrals</h4>
+                    <p className="stat-value">{referralStats.totalReferrals}</p>
+                    <p style={{ margin: 0, fontSize: '0.7em' }}>Successful closures</p>
+                    <User className="card-icon-bg" />
+                </div>
+                <div className="info-card accent-orange">
+                    <h4>Available to Claim</h4>
+                    <p className="stat-value">{referralStats.pendingPayout} SOL</p>
+                    <button className="btn btn-primary" style={{ marginTop: '10px', fontSize: '0.7em', padding: '5px 10px' }}>Claim Now</button>
+                    <Activity className="card-icon-bg" />
+                </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '30px' }}>
+                <div className="info-card" style={{ background: 'var(--spotify-gray-dark)' }}>
+                    <h3 style={{ color: 'white', marginBottom: '20px' }}>Earnings Trend</h3>
+                    {/* Placeholder for Chart */}
+                    <div style={{ height: '200px', width: '100%', display: 'flex', alignItems: 'flex-end', gap: '10px', padding: '20px 0' }}>
+                        {[40, 70, 45, 90, 65, 80, 100].map((h, i) => (
+                            <div key={i} style={{ flex: 1, background: 'var(--spotify-green)', height: `${h}%`, borderRadius: '4px 4px 0 0', opacity: 0.8 }}></div>
+                        ))}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--spotify-gray-lighter)', fontSize: '0.7em' }}>
+                        <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+                    </div>
+                </div>
+
+                <div className="info-card" style={{ background: 'var(--spotify-gray-dark)' }}>
+                    <h3 style={{ color: 'white', marginBottom: '20px' }}>Recent Activity</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                        {referralStats.history.map((item: any, i: number) => (
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #333', pb: '10px' }}>
+                                <div>
+                                    <div style={{ color: 'white', fontSize: '0.85em' }}>{item.villa}</div>
+                                    <div style={{ fontSize: '0.7em', color: 'var(--spotify-gray-lighter)' }}>{item.date}</div>
+                                </div>
+                                <div style={{ color: 'var(--spotify-green)', fontWeight: 700 }}>+{item.amount} SOL</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
     const renderCollections = () => (
         <div className="section-content animate-fadeIn">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -181,9 +247,9 @@ export default function ERPDashboard() {
                             <td>$ {villa.totalValue?.toLocaleString()}</td>
                             <td>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                    <span style={{ fontSize: '0.8em' }}>{realSupply} / {villa.totalTokens}</span>
+                                    <span style={{ fontSize: '0.8em' }}>{realSupply} / 40000</span>
                                     <div style={{ width: '80px', height: '4px', background: 'var(--spotify-gray-medium)', borderRadius: '2px' }}>
-                                        <div style={{ width: `${(realSupply / villa.totalTokens) * 100}%`, height: '100%', background: 'var(--spotify-green)', borderRadius: '2px' }}></div>
+                                        <div style={{ width: `${(realSupply / 40000) * 100}%`, height: '100%', background: 'var(--spotify-green)', borderRadius: '2px' }}></div>
                                     </div>
                                 </div>
                             </td>
@@ -223,6 +289,9 @@ export default function ERPDashboard() {
                     <button className={`nav-item ${activeSection === 'analytics' ? 'active' : ''}`} onClick={() => setActiveSection('analytics')}>
                         <BarChart3 className="nav-icon" /> <span>Financials</span>
                     </button>
+                    <button className={`nav-item ${activeSection === 'referrals' ? 'active' : ''}`} onClick={() => setActiveSection('referrals')}>
+                        <Globe className="nav-icon" /> <span>Referral Hub</span>
+                    </button>
                 </nav>
                 <div className="sidebar-separator"></div>
                 <nav className="secondary-nav">
@@ -256,6 +325,7 @@ export default function ERPDashboard() {
                 <div className="content-area">
                     {activeSection === 'dashboard' && renderDashboard()}
                     {activeSection === 'collections' && renderCollections()}
+                    {activeSection === 'referrals' && renderReferrals()}
                     {isLoading && <div style={{ color: 'var(--spotify-green)', textAlign: 'center', marginTop: '50px', fontWeight: 600 }}>Securing Connection to Database & Chain...</div>}
                 </div>
             </main>

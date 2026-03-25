@@ -10,10 +10,10 @@ export async function GET() {
 
     const villas = await prisma.villa.findMany({
       where: {
-        OR: [
-          { nftAddress: ETH_NFT_ADDRESS },
-          { nftAddress: SOL_NFT_ADDRESS }
-        ]
+        nftAddress: {
+          not: "",
+          notIn: ["BxUy8Xyj4ZXJsc6m6HdqPNQT9UY35dbUM4bLMVHCBZoS"] // Exclude the placeholder if you want, or just keep it if it's the "Makers" one
+        }
       },
       include: {
         marketPrices: {
@@ -35,7 +35,7 @@ export async function GET() {
         nightlyRate: v.nightlyRate,
         ery: `${v.ery}%`,
         ary: `${v.ary}%`,
-        totalTokens: v.totalTokens,
+        totalTokens: 40000,
         tokensSold: v.tokensSold,
         nextPayout: '2024-04-10', // Placeholder for logic
         maintenance: {

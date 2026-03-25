@@ -90,16 +90,18 @@ export default function Dashboard() {
 
   const fetchSolPrice = async () => {
     try {
-      const resp = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd,idr');
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data.solana) {
-          setSolPriceUsd(data.solana.usd);
-          setIdrRate(data.solana.idr);
-        }
+      const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd,idr');
+      const data = await response.json();
+      if (data.solana && data.solana.usd) {
+        setSolPriceUsd(data.solana.usd);
+        setIdrRate(data.solana.idr); // Assuming setIdrRate is the correct setter for IDR price
+      } else {
+        throw new Error("Invalid price data");
       }
     } catch (e) {
-      console.error("Failed to fetch SOL price", e);
+      console.error("Failed to fetch SOL price, using fallback", e);
+      // Fallback price if API times out or fails
+      if (solPriceUsd === 0) setSolPriceUsd(150); 
     }
   };
 
@@ -108,26 +110,46 @@ export default function Dashboard() {
   }, [selectedVilla]);
 
 
+  const fetchTokenSupply = async (mintAddress: string) => {
+    try {
+      const pubkey = new PublicKey(mintAddress);
+      const supply = await connection.getTokenSupply(pubkey);
+      return supply.value.uiAmount || 0;
+    } catch (e) {
+      console.error(`Failed to fetch supply for ${mintAddress}:`, e);
+      return 0;
+    }
+  };
+
   const fetchVillas = async () => {
     try {
       setIsLoading(true);
       // Force display ONLY the specific asset requested by the user
+      // Real NFT Mint Addresses on Solana Devnet
+      // FILL THESE IN as you deploy more assets via the CLI
+      const REAL_NFT_ADDRESSES = {
+        v1: 'BxUy8Xyj4ZXJsc6m6HdqPNQT9UY35dbUM4bLMVHCBZoS', // Makers Sunset Villa
+        v2: '', // Put Mint Address for Villa 2 here
+        v3: '', // Put Mint Address for Villa 3 here
+        v4: '', // Put Mint Address for Villa 4 here
+      };
+
       const backendVillas = [
         {
           id: 'v1',
           name: 'Uluwatu Cliffside Villa',
           location: 'Uluwatu, Bali',
-          nftAddress: TREASURY_WALLET_ADDRESS, // Default treasury
+          nftAddress: REAL_NFT_ADDRESSES.v1,
           pricePerShareUsd: 100,
           ery: '12.5',
           ary: '12.5',
           totalTokens: 40000,
-          tokensSold: 12500,
+          tokensSold: await fetchTokenSupply(REAL_NFT_ADDRESSES.v1),
           bedrooms: 4,
           bathrooms: 4,
           sqm: 850,
           occupancyStatus: 'Active',
-          images: ['/assets/villa_uluwatu_1774384936394.png'],
+          images: ['/assets/Villa 1.gif.mp4'],
           description: 'Premium fractionalized modern cliffside villa in Uluwatu, Bali. 40,000 shares available.',
           chain: 'solana'
         },
@@ -135,17 +157,17 @@ export default function Dashboard() {
           id: 'v2',
           name: 'Ubud Jungle Retreat',
           location: 'Ubud, Bali',
-          nftAddress: TREASURY_WALLET_ADDRESS,
+          nftAddress: REAL_NFT_ADDRESSES.v2,
           pricePerShareUsd: 100,
           ery: '9.2',
           ary: '9.2',
           totalTokens: 40000,
-          tokensSold: 5400,
+          tokensSold: await fetchTokenSupply(REAL_NFT_ADDRESSES.v2),
           bedrooms: 3,
           bathrooms: 3,
           sqm: 450,
           occupancyStatus: 'Active',
-          images: ['/assets/villa_ubud_1774384976227.png'],
+          images: ['/assets/Villa 2.gif.mp4'],
           description: 'Luxury tropical jungle villa in Ubud, surrounded by palm trees. 40,000 shares available.',
           chain: 'solana'
         },
@@ -153,17 +175,17 @@ export default function Dashboard() {
           id: 'v3',
           name: 'Seminyak Beachfront Villa',
           location: 'Seminyak, Bali',
-          nftAddress: TREASURY_WALLET_ADDRESS,
+          nftAddress: REAL_NFT_ADDRESSES.v3,
           pricePerShareUsd: 100,
           ery: '14.0',
           ary: '14.0',
           totalTokens: 40000,
-          tokensSold: 39500,
+          tokensSold: await fetchTokenSupply(REAL_NFT_ADDRESSES.v3),
           bedrooms: 5,
           bathrooms: 5,
           sqm: 1200,
           occupancyStatus: 'Active',
-          images: ['/assets/villa_seminyak_1774385029337.png'],
+          images: ['/assets/Villa 3.gif.mp4'],
           description: 'Exclusive luxury beachfront villa in Seminyak, perfect for sunset views. 40,000 shares available.',
           chain: 'solana'
         },
@@ -171,10 +193,21 @@ export default function Dashboard() {
           id: 'v4',
           name: 'Canggu Eco Villa',
           location: 'Canggu, Bali',
+          nftAddress: REAL_NFT_ADDRESSES.v4,
+          pricePerShareUsd: 100,
+          ery: '11.0',
+          ary: '11.0',
+          totalTokens: 40000,
+          tokensSold: await fetchTokenSupply(REAL_NFT_ADDRESSES.v4),
+          bedrooms: 3,
+          bathrooms: 3,
+          sqm: 400,
+          occupancyStatus: 'Active',
+          images: ['/assets/Villa 4.gif.mp4'],
           description: 'Minimalist eco-friendly villa with stunning rice terrace views in Canggu. 40,000 shares available.',
           chain: 'solana'
         }
-      ];
+      ].filter(villa => villa.nftAddress !== ''); // Only show assets that have been deployed
 
       setVillas(backendVillas);
       setIsLoading(false);
@@ -370,7 +403,18 @@ export default function Dashboard() {
                 boxShadow: theme === 'light' ? '0 10px 25px -5px rgba(0, 0, 0, 0.05)' : '0 10px 25px -5px rgba(0, 0, 0, 0.3)'
               }}>
                 <div style={{ position: 'relative', height: '240px' }}>
-                  <img src={villa.images?.[0] || 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&q=80&w=800'} alt={villa.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  {villa.images?.[0]?.endsWith('.mp4') ? (
+                    <video 
+                      src={villa.images[0]} 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                      autoPlay 
+                      muted 
+                      loop 
+                      playsInline 
+                    />
+                  ) : (
+                    <img src={villa.images?.[0] || 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&q=80&w=800'} alt={villa.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  )}
                   <div style={{ position: 'absolute', top: '16px', left: '16px', backgroundColor: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(8px)', padding: '6px 12px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 700, color: '#9945FF', border: '1px solid rgba(153, 69, 255, 0.2)' }}>
                     ERY {villa.ery}%
                   </div>
@@ -403,7 +447,7 @@ export default function Dashboard() {
                       <div style={{ width: `${(tokensSold / villa.totalTokens) * 100}%`, height: '100%', backgroundColor: '#14f195', borderRadius: '4px' }}></div>
                     </div>
                     <div style={{ marginTop: '6px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                      {tokensSold.toLocaleString()} / {villa.totalTokens.toLocaleString()} tokens sold
+                      {(tokensSold || 0).toLocaleString()} / {(villa.totalTokens || 0).toLocaleString()} tokens sold
                     </div>
                   </div>
 
@@ -465,7 +509,18 @@ export default function Dashboard() {
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2.5rem' }}>
                   <div>
-                    <img src={selectedVilla.images?.[0] || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&q=80&w=800'} alt={selectedVilla.name} style={{ width: '100%', borderRadius: '24px', marginBottom: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
+                    {selectedVilla.images?.[0]?.endsWith('.mp4') ? (
+                      <video 
+                        src={selectedVilla.images[0]} 
+                        style={{ width: '100%', borderRadius: '24px', marginBottom: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} 
+                        autoPlay 
+                        muted 
+                        loop 
+                        playsInline 
+                      />
+                    ) : (
+                      <img src={selectedVilla.images?.[0] || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&q=80&w=800'} alt={selectedVilla.name} style={{ width: '100%', borderRadius: '24px', marginBottom: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
+                    )}
                     <div style={{ display: 'flex', gap: '10px', marginBottom: '30px' }}>
                       <button style={{ backgroundColor: '#9945FF', color: 'white', border: 'none', padding: '12px 24px', borderRadius: '12px', fontWeight: 700 }}>Overview</button>
                       <button style={{ backgroundColor: 'var(--bg-color)', color: 'var(--text-muted)', border: 'none', padding: '12px 24px', borderRadius: '12px', fontWeight: 700 }}>Legal Structure</button>

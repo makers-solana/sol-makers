@@ -3,7 +3,8 @@ import * as dotenv from "dotenv";
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import { keypairIdentity, generateSigner, percentAmount } from "@metaplex-foundation/umi";
 import { irysUploader } from "@metaplex-foundation/umi-uploader-irys";
-import { createNft } from "@metaplex-foundation/mpl-token-metadata";
+import { mplTokenMetadata, createNft } from "@metaplex-foundation/mpl-token-metadata";
+import { mplToolbox } from "@metaplex-foundation/mpl-toolbox";
 import * as fs from "fs";
 import * as web3 from "@solana/web3.js";
 import bs58 from "bs58";
@@ -39,6 +40,8 @@ program
 
       // Initialize UMI for Devnet
       const umi = createUmi("https://api.devnet.solana.com")
+        .use(mplTokenMetadata())
+        .use(mplToolbox())
         .use(irysUploader({
           address: "https://devnet.irys.xyz"
         }));

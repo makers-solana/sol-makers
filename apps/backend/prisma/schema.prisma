@@ -106,6 +106,21 @@ model User {
   role      Role     @default(INVESTOR)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  
+  referrals Referral[] @relation("Referrer")
+}
+
+model Referral {
+  id              String   @id @default(cuid())
+  referrerAddress String
+  referrer        User     @relation("Referrer", fields: [referrerAddress], references: [address])
+  investorAddress String
+  villaId         String
+  amountSol       Float
+  commissionSol   Float
+  status          String   @default("COMPLETED") // PENDING, COMPLETED
+  txHash          String?  @unique
+  createdAt       DateTime @default(now())
 }
 
 enum Role {
