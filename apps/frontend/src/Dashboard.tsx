@@ -25,6 +25,15 @@ const solanaDevnet = defineChain({
   blockExplorers: [{ name: "Solana Explorer", url: "https://explorer.solana.com/?cluster=devnet" }],
 });
 
+// Treasury Wallet Address (Multisig Squads)
+// Owners: 
+// 1. 6vSg9Wjodtn5YiGq3A4npRg9ffDQgi8AnBAYA5DovdoL
+// 2. 4tbNceS9JRKt14A9WUcdRfgTG5SbNiDcvcQKMr28fB5S
+// 3. 4KcjU8zKHQjWkngDEx2337v3u4woiZMxXchMsbSUCeGm
+// 4. 41MLp5oX9yYwNoMCcQUw9ZRZQazEacU5JThrGv6E5wMU
+// Threshold: 3/4
+const TREASURY_WALLET_ADDRESS = '8bw4qgyQnChaa91hxUViB8gMLjmC39UvFsPMydwRmUN8'; // Placeholder until user creates multisig
+
 export default function Dashboard() {
   const [villas, setVillas] = useState<any[]>([]);
   const [selectedVilla, setSelectedVilla] = useState<any>(null);
@@ -108,7 +117,7 @@ export default function Dashboard() {
           id: 'v1',
           name: 'Uluwatu Cliffside Villa',
           location: 'Uluwatu, Bali',
-          nftAddress: '8bw4qgyQnChaa91hxUViB8gMLjmC39UvFsPMydwRmUN8', // Default seller
+          nftAddress: TREASURY_WALLET_ADDRESS, // Default treasury
           pricePerShareUsd: 100,
           ery: '12.5',
           ary: '12.5',
@@ -126,7 +135,7 @@ export default function Dashboard() {
           id: 'v2',
           name: 'Ubud Jungle Retreat',
           location: 'Ubud, Bali',
-          nftAddress: '8bw4qgyQnChaa91hxUViB8gMLjmC39UvFsPMydwRmUN8',
+          nftAddress: TREASURY_WALLET_ADDRESS,
           pricePerShareUsd: 100,
           ery: '9.2',
           ary: '9.2',
@@ -144,7 +153,7 @@ export default function Dashboard() {
           id: 'v3',
           name: 'Seminyak Beachfront Villa',
           location: 'Seminyak, Bali',
-          nftAddress: '8bw4qgyQnChaa91hxUViB8gMLjmC39UvFsPMydwRmUN8',
+          nftAddress: TREASURY_WALLET_ADDRESS,
           pricePerShareUsd: 100,
           ery: '14.0',
           ary: '14.0',
@@ -162,17 +171,6 @@ export default function Dashboard() {
           id: 'v4',
           name: 'Canggu Eco Villa',
           location: 'Canggu, Bali',
-          nftAddress: '8bw4qgyQnChaa91hxUViB8gMLjmC39UvFsPMydwRmUN8',
-          pricePerShareUsd: 100,
-          ery: '10.5',
-          ary: '10.5',
-          totalTokens: 40000,
-          tokensSold: 21000,
-          bedrooms: 3,
-          bathrooms: 2,
-          sqm: 350,
-          occupancyStatus: 'Active',
-          images: ['/assets/villa_canggu_1774385051669.png'],
           description: 'Minimalist eco-friendly villa with stunning rice terrace views in Canggu. 40,000 shares available.',
           chain: 'solana'
         }
@@ -189,7 +187,8 @@ export default function Dashboard() {
 
   const calculateReturn = (villa: any) => {
     const yieldRate = parseFloat(villa.ery) / 100;
-    return `${(investAmount * villa.pricePerShare * yieldRate).toLocaleString(undefined, { maximumFractionDigits: 4 })} SOL`;
+    const pricePerShareSol = 100 / solPriceUsd;
+    return `${(investAmount * pricePerShareSol * yieldRate).toLocaleString(undefined, { maximumFractionDigits: 4 })} SOL`;
   };
 
   const handleSolanaAcquisition = async () => {
@@ -203,7 +202,7 @@ export default function Dashboard() {
 
       const pricePerShareSol = 100 / solPriceUsd;
       const totalLamports = Math.floor(investAmount * pricePerShareSol * 1e9);
-      const sellerPubkey = new PublicKey(selectedVilla.nftAddress.length > 20 ? selectedVilla.nftAddress : '8bw4qgyQnChaa91hxUViB8gMLjmC39UvFsPMydwRmUN8');
+      const sellerPubkey = new PublicKey(TREASURY_WALLET_ADDRESS);
 
       const transaction = new Transaction();
 
