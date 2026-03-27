@@ -1,8 +1,14 @@
 #!/bin/bash
 set -e
 
+# Support passing network as first argument, default to devnet
+NETWORK=${1:-devnet}
+
+echo "Deploying to Solana Network: $NETWORK"
+
 echo "Deploying Villa 1: Uluwatu"
 ~/makers/deploy-nft.sh deploy \
+  --network "$NETWORK" \
   -n "Uluwatu Cliffside Villa" \
   -s "ULWV" \
   -d "Premium fractionalized modern cliffside villa in Uluwatu, Bali. 40,000 shares available." \
@@ -11,6 +17,7 @@ echo "Deploying Villa 1: Uluwatu"
 
 echo "Deploying Villa 2: Ubud"
 ~/makers/deploy-nft.sh deploy \
+  --network "$NETWORK" \
   -n "Ubud Jungle Retreat" \
   -s "UBJV" \
   -d "Luxury tropical jungle villa in Ubud, surrounded by palm trees. 40,000 shares available." \
@@ -19,6 +26,7 @@ echo "Deploying Villa 2: Ubud"
 
 echo "Deploying Villa 3: Seminyak"
 ~/makers/deploy-nft.sh deploy \
+  --network "$NETWORK" \
   -n "Seminyak Beachfront Villa" \
   -s "SMBV" \
   -d "Exclusive luxury beachfront villa in Seminyak, perfect for sunset views. 40,000 shares available." \
@@ -27,10 +35,11 @@ echo "Deploying Villa 3: Seminyak"
 
 echo "Deploying Villa 4: Canggu"
 ~/makers/deploy-nft.sh deploy \
+  --network "$NETWORK" \
   -n "Canggu Eco Villa" \
   -s "CGEV" \
   -d "Minimalist eco-friendly villa with stunning rice terrace views in Canggu. 40,000 shares available." \
   -i "/mnt/c/Users/MODERN 14/.gemini/antigravity/brain/ac4e41a4-0dd2-4ceb-9070-df5c072b2b06/villa_canggu_1774385051669.png" \
   -t 40000
 
-echo "ALL DEPLOYMENTS COMPLETE!"
+echo "ALL DEPLOYMENTS COMPLETE ON $NETWORK!"
