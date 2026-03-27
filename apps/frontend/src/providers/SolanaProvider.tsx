@@ -1,7 +1,6 @@
-import React, { FC, ReactNode, useMemo } from 'react';
+import React, { FC, ReactNode, useMemo, useEffect } from 'react';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
-import { UnsafeBurnerWalletAdapter } from '@solana/wallet-adapter-wallets';
 import {
     WalletModalProvider,
     WalletDisconnectButton,
@@ -31,11 +30,22 @@ export const SolanaProvider: FC<{ children: ReactNode }> = ({ children }) => {
              * instantiate its legacy adapter here. Common legacy adapters can be found
              * in the library "@solana/wallet-adapter-wallets".
              */
-            new UnsafeBurnerWalletAdapter(),
         ],
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [network]
     );
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const walletName = params.get('wallet');
+        if (walletName) {
+            localStorage.setItem('walletName', JSON.stringify(walletName));
+            // Remove the param from URL to keep it clean
+            const url = new URL(window.location.href);
+            url.searchParams.delete('wallet');
+            window.history.replaceState({}, '', url.toString());
+        }
+    }, []);
 
     return (
         <ConnectionProvider endpoint={endpoint}>

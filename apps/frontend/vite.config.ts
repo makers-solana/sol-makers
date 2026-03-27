@@ -10,5 +10,9 @@ export default defineConfig({
     hmr: {
       host: 'localhost',
     },
-  }
+  },
+  define: {
+    'global': 'globalThis',
+    'process.env': {},
+  },
 })

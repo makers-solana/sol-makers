@@ -1,18 +1,53 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { Connection, PublicKey } from '@solana/web3.js';
 
 const prisma = new PrismaClient();
 
+const SOLANA_RPC = "https://api.devnet.solana.com";
+const connection = new Connection(SOLANA_RPC);
+const TREASURY_WALLET_ADDRESS = '41MLp5oX9yYwNoMCcQUw9ZRZQazEacU5JThrGv6E5wMU';
+
+const REAL_NFT_ADDRESSES = {
+  v1: 'BxUy8Xyj4ZXJsc6m6HdqPNQT9UY35dbUM4bLMVHCBZoS',
+  v2: 'd4Qqt3UzxcQBhqpRBZcQzknokCiGA82RRMzzwXBPYUg',
+  v3: 'GABXPkqndQ7Fb7C2CST4pff1VkQXjcCtuvCdPpSRuQHy',
+  v4: '5uNBRRYNEux1GovaiRrgaGJAHRUBp8hXQqNMdkFgFVf8',
+};
+
+async function fetchTokenSupply(mintAddress: string) {
+  try {
+    const mintPubkey = new PublicKey(mintAddress);
+    const supplyInfo = await connection.getTokenSupply(mintPubkey);
+    const totalSupply = supplyInfo.value.uiAmount || 0;
+
+    try {
+      const treasuryPubkey = new PublicKey(TREASURY_WALLET_ADDRESS);
+      const tokenAccounts = await connection.getTokenAccountsByOwner(treasuryPubkey, { mint: mintPubkey });
+      
+      let treasuryBalance = 0;
+      if (tokenAccounts.value.length > 0) {
+        const balanceRecord = await connection.getTokenAccountBalance(tokenAccounts.value[0].pubkey);
+        treasuryBalance = balanceRecord.value.uiAmount || 0;
+      }
+      return Math.max(0, totalSupply - treasuryBalance);
+    } catch (balErr) {
+      return totalSupply;
+    }
+  } catch (e) {
+    console.error(`Failed to fetch supply for ${mintAddress}:`, e);
+    return 0;
+  }
+}
+
 export async function GET() {
   try {
-    const ETH_NFT_ADDRESS = "0x2B91E94Ce68cDf1321269c135Fbb12A2C1F781E5";
-    const SOL_NFT_ADDRESS = "BxUy8Xyj4ZXJsc6m6HdqPNQT9UY35dbUM4bLMVHCBZoS";
-
+    // Fetch all villas that have an NFT address defined
     const villas = await prisma.villa.findMany({
       where: {
         nftAddress: {
-          not: "",
-          notIn: ["BxUy8Xyj4ZXJsc6m6HdqPNQT9UY35dbUM4bLMVHCBZoS"] // Exclude the placeholder if you want, or just keep it if it's the "Makers" one
+          not: "", // Ensure nftAddress is not empty
+          in: Object.values(REAL_NFT_ADDRESSES) // Only fetch villas with known real NFT addresses
         }
       },
       include: {
@@ -27,26 +62,32 @@ export async function GET() {
       }
     });
 
-    // Transform data to match the expected format if necessary
-    const formattedVillas = villas.map(v => ({
-      ...v,
-      erp: {
-        occupancy: v.occupancyStatus,
-        nightlyRate: v.nightlyRate,
-        ery: `${v.ery}%`,
-        ary: `${v.ary}%`,
+    // Transform data and fetch real-time supply
+    const formattedVillas = await Promise.all(villas.map(async (v) => {
+      const liveTokensSold = await fetchTokenSupply(v.nftAddress);
+      
+      return {
+        ...v,
+        tokensSold: liveTokensSold,
         totalTokens: 40000,
-        tokensSold: v.tokensSold,
-        nextPayout: '2024-04-10', // Placeholder for logic
-        maintenance: {
-          last: v.lastMaintenance,
-          next: v.nextMaintenance
-        },
-        marketPrice: {
-          secondary: v.marketPrices[0]?.price || 0,
-          trend: '+5%' // Placeholder logic
+        erp: {
+          occupancy: v.occupancyStatus,
+          nightlyRate: v.nightlyRate,
+          ery: `${v.ery}%`,
+          ary: `${v.ary}%`,
+          totalTokens: 40000,
+          tokensSold: liveTokensSold,
+          nextPayout: '2024-04-10',
+          maintenance: {
+            last: v.lastMaintenance || '2024-03-15',
+            next: v.nextMaintenance || '2024-06-15'
+          },
+          marketPrice: {
+            secondary: v.marketPrices[0]?.price || v.pricePerShare,
+            trend: '+5%'
+          }
         }
-      }
+      };
     }));
 
     return NextResponse.json(formattedVillas);

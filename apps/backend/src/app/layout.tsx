@@ -1,8 +1,9 @@
 import React from 'react';
 import Providers from './Providers';
+import './erp.css';
 
 export const metadata = {
-  title: 'Makers ERP - NFT Management',
+  title: 'Makers Dashboard - NFT Management',
   description: 'Professional NFT Management Dashboard',
 }
 
@@ -14,6 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+
         <Providers>
           {children}
         </Providers>

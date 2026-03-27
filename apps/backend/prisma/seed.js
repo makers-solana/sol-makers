@@ -7,14 +7,41 @@ async function main() {
   await prisma.villa.deleteMany({});
   
   const v1 = await prisma.villa.upsert({
-    where: { nftAddress: '0x2B91E94Ce68cDf1321269c135Fbb12A2C1F781E5' },
+    where: { nftAddress: 'BxUy8Xyj4ZXJsc6m6HdqPNQT9UY35dbUM4bLMVHCBZoS' },
     update: {},
     create: {
-      name: 'Makers Villa Bali',
-      location: 'Indonesia',
-      description: 'Premium fractionalized villa asset "Makers Villa Bali" (Edition Drop) - 40,000 shares available at 0.035 ETH each.',
-      pricePerShare: 0.035,
-      totalValue: 1400, // 40000 * 0.035
+      id: 'v1',
+      name: 'Uluwatu Cliffside Villa',
+      location: 'Uluwatu, Bali',
+      description: 'Premium fractionalized modern cliffside villa in Uluwatu, Bali.',
+      pricePerShare: 100,
+      totalValue: 4000000,
+      totalShares: 40000,
+      totalTokens: 40000,
+      tokensSold: 0,
+      bedrooms: 4,
+      bathrooms: 4,
+      sqm: 850,
+      occupancyStatus: 'Active',
+      ery: 12.5,
+      ary: 12.5,
+      legalStructure: 'FRACTIONAL_OWNERSHIP',
+      nftAddress: 'BxUy8Xyj4ZXJsc6m6HdqPNQT9UY35dbUM4bLMVHCBZoS',
+      chain: 'solana',
+      images: ['/assets/Villa 1.gif.mp4']
+    }
+  });
+
+  const v2 = await prisma.villa.upsert({
+    where: { nftAddress: 'd4Qqt3UzxcQBhqpRBZcQzknokCiGA82RRMzzwXBPYUg' },
+    update: {},
+    create: {
+      id: 'v2',
+      name: 'Ubud Jungle Retreat',
+      location: 'Ubud, Bali',
+      description: 'Luxury tropical jungle villa in Ubud.',
+      pricePerShare: 100,
+      totalValue: 4000000,
       totalShares: 40000,
       totalTokens: 40000,
       tokensSold: 0,
@@ -22,53 +49,78 @@ async function main() {
       bathrooms: 3,
       sqm: 450,
       occupancyStatus: 'Active',
-      nightlyRate: 0,
-      ery: 8.5,
-      ary: 8.5,
+      ery: 9.2,
+      ary: 9.2,
       legalStructure: 'FRACTIONAL_OWNERSHIP',
-      nftAddress: '0x2B91E94Ce68cDf1321269c135Fbb12A2C1F781E5',
-      chain: 'ethereum',
-      images: ['https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&q=80&w=800']
+      nftAddress: 'd4Qqt3UzxcQBhqpRBZcQzknokCiGA82RRMzzwXBPYUg',
+      chain: 'solana',
+      images: ['/assets/Villa 2.gif.mp4']
     }
   });
 
-  const v2 = await prisma.villa.upsert({
-    where: { nftAddress: 'BxUy8Xyj4ZXJsc6m6HdqPNQT9UY35dbUM4bLMVHCBZoS' },
+  const v3 = await prisma.villa.upsert({
+    where: { nftAddress: 'GABXPkqndQ7Fb7C2CST4pff1VkQXjcCtuvCdPpSRuQHy' },
     update: {},
     create: {
-      name: 'Solana Sunset Villa',
-      location: 'Uluwatu, Bali',
-      description: 'Luxurious Solana-based villa asset. High yield potential in the heart of Uluwatu.',
-      pricePerShare: 0.48,
-      totalValue: 2400, // 5000 * 0.48
-      totalShares: 5000,
-      totalTokens: 5000,
-      tokensSold: 1,
-      bedrooms: 4,
-      bathrooms: 4,
-      sqm: 600,
+      id: 'v3',
+      name: 'Seminyak Beachfront Villa',
+      location: 'Seminyak, Bali',
+      description: 'Exclusive luxury beachfront villa in Seminyak.',
+      pricePerShare: 100,
+      totalValue: 4000000,
+      totalShares: 40000,
+      totalTokens: 40000,
+      tokensSold: 0,
+      bedrooms: 5,
+      bathrooms: 5,
+      sqm: 1200,
       occupancyStatus: 'Active',
-      nightlyRate: 0,
-      ery: 10.2,
-      ary: 10.2,
+      ery: 14.0,
+      ary: 14.0,
       legalStructure: 'FRACTIONAL_OWNERSHIP',
-      nftAddress: 'BxUy8Xyj4ZXJsc6m6HdqPNQT9UY35dbUM4bLMVHCBZoS',
+      nftAddress: 'GABXPkqndQ7Fb7C2CST4pff1VkQXjcCtuvCdPpSRuQHy',
       chain: 'solana',
-      images: ['https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&q=80&w=800']
+      images: ['/assets/Villa 3.gif.mp4']
+    }
+  });
+
+  const v4 = await prisma.villa.upsert({
+    where: { nftAddress: '5uNBRRYNEux1GovaiRrgaGJAHRUBp8hXQqNMdkFgFVf8' },
+    update: {},
+    create: {
+      id: 'v4',
+      name: 'Canggu Eco Villa',
+      location: 'Canggu, Bali',
+      description: 'Minimalist eco-friendly villa in Canggu.',
+      pricePerShare: 100,
+      totalValue: 4000000,
+      totalShares: 40000,
+      totalTokens: 40000,
+      tokensSold: 0,
+      bedrooms: 3,
+      bathrooms: 3,
+      sqm: 400,
+      occupancyStatus: 'Active',
+      ery: 11.0,
+      ary: 11.0,
+      legalStructure: 'FRACTIONAL_OWNERSHIP',
+      nftAddress: '5uNBRRYNEux1GovaiRrgaGJAHRUBp8hXQqNMdkFgFVf8',
+      chain: 'solana',
+      images: ['/assets/Villa 4.gif.mp4']
     }
   });
 
   const admin = await prisma.user.upsert({
-    where: { address: '0xdebug_admin_address' },
+    where: { address: '41MLp5oX9yYwNoMCcQUw9ZRZQazEacU5JThrGv6E5wMU' },
     update: {},
     create: {
-      address: '0xdebug_admin_address',
+      address: '41MLp5oX9yYwNoMCcQUw9ZRZQazEacU5JThrGv6E5wMU',
       name: 'ERP Admin',
       role: 'ADMIN'
     }
   });
 
-  console.log({ v1, v2, admin });
+  console.log({ v1, v2, v3, v4, admin });
 }
 
 main()

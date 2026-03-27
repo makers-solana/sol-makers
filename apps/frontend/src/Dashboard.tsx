@@ -32,9 +32,9 @@ const solanaDevnet = defineChain({
 // 3. 4KcjU8zKHQjWkngDEx2337v3u4woiZMxXchMsbSUCeGm
 // 4. 41MLp5oX9yYwNoMCcQUw9ZRZQazEacU5JThrGv6E5wMU
 // Threshold: 3/4
-const TREASURY_WALLET_ADDRESS = '8bw4qgyQnChaa91hxUViB8gMLjmC39UvFsPMydwRmUN8'; // Placeholder until user creates multisig
+const TREASURY_WALLET_ADDRESS = '41MLp5oX9yYwNoMCcQUw9ZRZQazEacU5JThrGv6E5wMU';
 
-export default function Dashboard() {
+export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const [villas, setVillas] = useState<any[]>([]);
   const [selectedVilla, setSelectedVilla] = useState<any>(null);
   const [investAmount, setInvestAmount] = useState<number>(1);
@@ -44,14 +44,11 @@ export default function Dashboard() {
   const [solPriceUsd, setSolPriceUsd] = useState<number>(150);
   const [idrRate, setIdrRate] = useState<number>(15500 * 150);
   const [referralAddress, setReferralAddress] = useState<string>('');
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
 
   // Solana Wallet Adapter hooks
-  const { publicKey, sendTransaction, connected: solanaConnected } = useWallet();
+  const { publicKey, wallet, sendTransaction, connected: solanaConnected } = useWallet();
   const { connection } = useConnection();
-
-  // we'll mock it or use the tokensSold property.
-  const solTotalSold = 1; // Real-time value from the mint we just did
 
   useEffect(() => {
     document.body.className = theme === 'dark' ? 'dark' : '';
@@ -101,7 +98,7 @@ export default function Dashboard() {
     } catch (e) {
       console.error("Failed to fetch SOL price, using fallback", e);
       // Fallback price if API times out or fails
-      if (solPriceUsd === 0) setSolPriceUsd(150); 
+      if (solPriceUsd === 0) setSolPriceUsd(150);
     }
   };
 
@@ -110,11 +107,34 @@ export default function Dashboard() {
   }, [selectedVilla]);
 
 
+  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
   const fetchTokenSupply = async (mintAddress: string) => {
     try {
-      const pubkey = new PublicKey(mintAddress);
-      const supply = await connection.getTokenSupply(pubkey);
-      return supply.value.uiAmount || 0;
+      const mintPubkey = new PublicKey(mintAddress);
+
+      // Get Total Supply
+      const supplyInfo = await connection.getTokenSupply(mintPubkey);
+      const totalSupply = supplyInfo.value.uiAmount || 0;
+
+      // Get Treasury Balance (tokens NOT sold yet)
+      try {
+        const treasuryPubkey = new PublicKey(TREASURY_WALLET_ADDRESS);
+        const tokenAccounts = await connection.getTokenAccountsByOwner(treasuryPubkey, { mint: mintPubkey });
+
+        let treasuryBalance = 0;
+        if (tokenAccounts.value.length > 0) {
+          const balanceRecord = await connection.getTokenAccountBalance(tokenAccounts.value[0].pubkey);
+          treasuryBalance = balanceRecord.value.uiAmount || 0;
+        }
+
+        // Sold = Total Supply - Treasury Balance
+        const sold = Math.max(0, totalSupply - treasuryBalance);
+        return sold;
+      } catch (balErr) {
+        console.warn(`Could not fetch treasury balance for ${mintAddress}, returning total supply:`, balErr);
+        return totalSupply; // Fallback to total supply if treasury check fails
+      }
     } catch (e) {
       console.error(`Failed to fetch supply for ${mintAddress}:`, e);
       return 0;
@@ -126,13 +146,22 @@ export default function Dashboard() {
       setIsLoading(true);
       // Force display ONLY the specific asset requested by the user
       // Real NFT Mint Addresses on Solana Devnet
-      // FILL THESE IN as you deploy more assets via the CLI
+      // Real NFT Mint Addresses on Solana Devnet
+      // REPLACE these with your own Mint Addresses as you deploy them!
       const REAL_NFT_ADDRESSES = {
         v1: 'BxUy8Xyj4ZXJsc6m6HdqPNQT9UY35dbUM4bLMVHCBZoS', // Makers Sunset Villa
-        v2: '', // Put Mint Address for Villa 2 here
-        v3: '', // Put Mint Address for Villa 3 here
-        v4: '', // Put Mint Address for Villa 4 here
+        v2: 'd4Qqt3UzxcQBhqpRBZcQzknokCiGA82RRMzzwXBPYUg', // Placeholder
+        v3: 'GABXPkqndQ7Fb7C2CST4pff1VkQXjcCtuvCdPpSRuQHy', // Placeholder
+        v4: '5uNBRRYNEux1GovaiRrgaGJAHRUBp8hXQqNMdkFgFVf8', // Placeholder
       };
+
+      const v1Sold = await fetchTokenSupply(REAL_NFT_ADDRESSES.v1);
+      await delay(500);
+      const v2Sold = await fetchTokenSupply(REAL_NFT_ADDRESSES.v2);
+      await delay(500);
+      const v3Sold = await fetchTokenSupply(REAL_NFT_ADDRESSES.v3);
+      await delay(500);
+      const v4Sold = await fetchTokenSupply(REAL_NFT_ADDRESSES.v4);
 
       const backendVillas = [
         {
@@ -144,7 +173,7 @@ export default function Dashboard() {
           ery: '12.5',
           ary: '12.5',
           totalTokens: 40000,
-          tokensSold: await fetchTokenSupply(REAL_NFT_ADDRESSES.v1),
+          tokensSold: v1Sold,
           bedrooms: 4,
           bathrooms: 4,
           sqm: 850,
@@ -162,7 +191,7 @@ export default function Dashboard() {
           ery: '9.2',
           ary: '9.2',
           totalTokens: 40000,
-          tokensSold: await fetchTokenSupply(REAL_NFT_ADDRESSES.v2),
+          tokensSold: v2Sold,
           bedrooms: 3,
           bathrooms: 3,
           sqm: 450,
@@ -180,7 +209,7 @@ export default function Dashboard() {
           ery: '14.0',
           ary: '14.0',
           totalTokens: 40000,
-          tokensSold: await fetchTokenSupply(REAL_NFT_ADDRESSES.v3),
+          tokensSold: v3Sold,
           bedrooms: 5,
           bathrooms: 5,
           sqm: 1200,
@@ -198,7 +227,7 @@ export default function Dashboard() {
           ery: '11.0',
           ary: '11.0',
           totalTokens: 40000,
-          tokensSold: await fetchTokenSupply(REAL_NFT_ADDRESSES.v4),
+          tokensSold: v4Sold,
           bedrooms: 3,
           bathrooms: 3,
           sqm: 400,
@@ -207,7 +236,7 @@ export default function Dashboard() {
           description: 'Minimalist eco-friendly villa with stunning rice terrace views in Canggu. 40,000 shares available.',
           chain: 'solana'
         }
-      ].filter(villa => villa.nftAddress !== ''); // Only show assets that have been deployed
+      ];
 
       setVillas(backendVillas);
       setIsLoading(false);
@@ -311,167 +340,174 @@ export default function Dashboard() {
   ];
 
 
-  if (isLoading) return <div style={{ backgroundColor: 'var(--bg-color)', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#9945FF', fontWeight: 800 }}>Loading Solana Villas...</div>;
+  if (isLoading) {
+    return (
+      <div style={{ backgroundColor: 'var(--bg-color)', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <div id="load">
+          <div>G</div>
+          <div>N</div>
+          <div>I</div>
+          <div>D</div>
+          <div>A</div>
+          <div>O</div>
+          <div>L</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-color)', color: 'var(--text-color)' }}>
-      <nav style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        padding: '20px 40px', 
-        backgroundColor: 'var(--nav-bg)', 
-        backdropFilter: 'blur(20px)',
-        position: 'sticky',
-        top: 0,
+    <div style={{ minHeight: '100vh', paddingTop: '100px' }}>
+      <div className="scene" aria-hidden="true">
+        <div className="scene__blob scene__blob--1"></div>
+        <div className="scene__blob scene__blob--2"></div>
+        <div className="scene__blob scene__blob--3"></div>
+      </div>
+
+      <nav className="glass" style={{
+        position: 'fixed',
+        inset: '14px 14px auto 14px',
         zIndex: 100,
-        borderBottom: '1px solid var(--nav-border)'
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '12px 14px',
+        borderRadius: '999px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <img 
-            src="https://app.thehistorymaker.io/makers-dark01.png" 
-            alt="MAKERS Logo" 
-            style={{ width: '40px', height: '40px', objectFit: 'contain' }} 
-          />
-          <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900, background: 'linear-gradient(90deg, #9945FF, #14F195)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>MAKERS</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingLeft: '6px', cursor: 'pointer' }} onClick={() => onNavigate?.('home')}>
+          <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #fff, #7c5cff)', boxShadow: '0 0 0 6px rgba(124, 92, 255, 0.12)' }}></div>
+          <span style={{ fontWeight: 800, letterSpacing: '0.02em', color: 'var(--text-color)' }}>Makers</span>
+          <span style={{ marginLeft: '8px', padding: '6px 10px', borderRadius: '999px', border: '1px solid var(--border)', background: 'rgba(255, 255, 255, 0.04)', color: 'var(--text-muted)', fontSize: '12px' }}>Marketplace</span>
         </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
-            <div style={{ display: 'flex', backgroundColor: 'var(--card-border)', padding: '4px', borderRadius: '12px' }}>
-              <button 
-                onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-                style={{
-                  padding: '8px',
-                  borderRadius: '10px',
-                  border: 'none',
-                  background: 'transparent',
-                  color: 'var(--text-color)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'all 0.2s'
-                }}
-                title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
+        <nav className="glass-nav" aria-label="Main navigation" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <a href="/" onClick={(e) => { e.preventDefault(); onNavigate?.('home'); }} className="glass-btn glass-btn--ghost glass-btn--sm" style={{ padding: '9px 12px' }}>Home</a>
+          <a href="/marketplace" onClick={(e) => { e.preventDefault(); onNavigate?.('marketplace'); }} className="glass-btn glass-btn--primary glass-btn--sm" style={{ padding: '9px 12px' }}>Marketplace</a>
+          <a href={solanaConnected && wallet?.adapter.name ? `http://localhost:3001/?wallet=${encodeURIComponent(wallet.adapter.name)}` : "http://localhost:3001/"} className="glass-btn glass-btn--ghost glass-btn--sm" style={{ padding: '9px 12px' }}>Asset & Earning</a>
+          <a href="/about" onClick={(e) => { e.preventDefault(); onNavigate?.('about'); }} className="glass-btn glass-btn--ghost glass-btn--sm" style={{ padding: '9px 12px' }}>About Us</a>
+        </nav>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
+          <div style={{ display: 'flex', backgroundColor: 'var(--card-border)', padding: '4px', borderRadius: '12px' }}>
+            <button
+              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+              style={{
+                padding: '8px',
+                borderRadius: '10px',
+                border: 'none',
+                background: 'transparent',
+                color: 'var(--text-color)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s'
+              }}
+              title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
+            >
+              {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+            </button>
+          </div>
+
+          <div className="solana-connect-button-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {publicKey && (
+              <button
+                className="glass-btn glass-btn--ghost glass-btn--sm"
+                onClick={copyReferralLink}
+                style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-violet)' }}
               >
-                {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+                Copy Referral Link
               </button>
-            </div>
-  
-            <div className="solana-connect-button-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              {publicKey && (
-                <button 
-                  onClick={copyReferralLink}
-                  style={{
-                    padding: '8px 16px',
-                    borderRadius: '10px',
-                    border: '1px solid #9945FF',
-                    background: 'transparent',
-                    color: '#9945FF',
-                    fontSize: '0.75rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  Copy Referral Link
-                </button>
-              )}
-              <div className="solana-adapter-wrapper">
-                <WalletMultiButton style={{ backgroundColor: '#9945FF', borderRadius: '12px', height: '44px', padding: '0 24px' }} />
-              </div>
+            )}
+            <div className="solana-adapter-wrapper">
+              <WalletMultiButton style={{ backgroundColor: '#9945FF', borderRadius: '12px', height: '44px', padding: '0 24px' }} />
             </div>
           </div>
+        </div>
       </nav>
 
       <main className="dashboard-grid" style={{ padding: '60px 40px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '40px' }}>
         {villas.map((villa) => {
-          let tokensSold = villa.tokensSold;
-          if (villa.id === 'v2') {
-            tokensSold = solTotalSold;
-          }
+          const tokensSold = villa.tokensSold || 0;
 
-            return (
-              <div key={villa.id} style={{
-                display: 'flex',
-                flexDirection: 'column',
-                borderRadius: '24px',
-                overflow: 'hidden',
-                border: '1px solid var(--card-border)',
-                background: 'var(--card-bg)',
-                transition: 'all 0.3s',
-                boxShadow: theme === 'light' ? '0 10px 25px -5px rgba(0, 0, 0, 0.05)' : '0 10px 25px -5px rgba(0, 0, 0, 0.3)'
-              }}>
-                <div style={{ position: 'relative', height: '240px' }}>
-                  {villa.images?.[0]?.endsWith('.mp4') ? (
-                    <video 
-                      src={villa.images[0]} 
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                      autoPlay 
-                      muted 
-                      loop 
-                      playsInline 
-                    />
-                  ) : (
-                    <img src={villa.images?.[0] || 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&q=80&w=800'} alt={villa.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  )}
-                  <div style={{ position: 'absolute', top: '16px', left: '16px', backgroundColor: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(8px)', padding: '6px 12px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 700, color: '#9945FF', border: '1px solid rgba(153, 69, 255, 0.2)' }}>
-                    ERY {villa.ery}%
-                  </div>
-                  <div style={{ position: 'absolute', bottom: '16px', right: '16px', background: 'linear-gradient(90deg, #9945FF, #14F195)', padding: '6px 14px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 800, color: 'white', border: 'none', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
-                    {villa.chain === 'solana' ? `◎ ${(100 / solPriceUsd).toFixed(3)} / NFT` : `$${villa.pricePerShare} / token`}
-                  </div>
+          return (
+            <div key={villa.id} className="glass glass-card" style={{
+              display: 'flex',
+              flexDirection: 'column',
+              padding: 0
+            }}>
+              <div style={{ position: 'relative', height: '240px' }}>
+                {villa.images?.[0]?.endsWith('.mp4') ? (
+                  <video
+                    src={villa.images[0]}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                  />
+                ) : (
+                  <img src={villa.images?.[0] || 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&q=80&w=800'} alt={villa.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                )}
+                <div className="glass-badge glass-badge--violet" style={{ position: 'absolute', top: '16px', left: '16px', fontSize: '0.75rem' }}>
+                  <span className="glass-badge__dot"></span> ERY {villa.ery}%
                 </div>
-
-                <div style={{ padding: '24px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-color)' }}>{villa.name}</h3>
-                    <TrendingUp size={20} color="#9945FF" />
-                  </div>
-                  <p style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 20px 0' }}>
-                    <MapPin size={14} /> {villa.location}
-                  </p>
-
-                  <div style={{ display: 'flex', gap: '16px', marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid var(--bg-color)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-muted)' }}><Bed size={16} color="#9945FF" /> {villa.bedrooms} Beds</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-muted)' }}><Bath size={16} color="#9945FF" /> {villa.bathrooms} Baths</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-muted)' }}><Layout size={16} color="#9945FF" /> {villa.sqm} m²</div>
-                  </div>
-
-                  <div style={{ marginBottom: '20px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '8px' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Funding Progress</span>
-                      <span style={{ fontWeight: 800, color: '#14f195' }}>{((tokensSold / villa.totalTokens) * 100).toFixed(1)}%</span>
-                    </div>
-                    <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--bg-color)', borderRadius: '4px', overflow: 'hidden' }}>
-                      <div style={{ width: `${(tokensSold / villa.totalTokens) * 100}%`, height: '100%', backgroundColor: '#14f195', borderRadius: '4px' }}></div>
-                    </div>
-                    <div style={{ marginTop: '6px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                      {(tokensSold || 0).toLocaleString()} / {(villa.totalTokens || 0).toLocaleString()} tokens sold
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
-                    <div style={{ background: 'var(--surface-muted)', padding: '12px', borderRadius: '16px', border: '1px solid var(--card-border)' }}>
-                      <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '4px' }}>ANNUAL YIELD (ARY)</div>
-                      <div style={{ fontSize: '1rem', fontWeight: 800, color: '#9945FF' }}>{villa.ary}%</div>
-                    </div>
-                    <div style={{ background: 'var(--surface-muted)', padding: '12px', borderRadius: '16px', border: '1px solid var(--card-border)' }}>
-                      <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '4px' }}>STATUS</div>
-                      <div style={{ fontSize: '1rem', fontWeight: 800, color: '#14f195' }}>{villa.occupancyStatus}</div>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => setSelectedVilla(villa)}
-                    style={{ width: '100%', padding: '14px', borderRadius: '16px', border: '1px solid #9945FF', background: 'transparent', color: '#9945FF', fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
-                  >
-                    Analyze & Invest <ChevronRight size={18} />
-                  </button>
+                <div className="glass-badge glass-badge--aqua" style={{ position: 'absolute', bottom: '16px', right: '16px', fontSize: '0.75rem', background: 'var(--accent-aqua)', color: '#000', border: 'none' }}>
+                  {villa.chain === 'solana' ? `◎ ${(100 / solPriceUsd).toFixed(3)} / NFT` : `$${villa.pricePerShare} / token`}
                 </div>
               </div>
-            );
-          })}
+
+              <div style={{ padding: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-color)' }}>{villa.name}</h3>
+                  <TrendingUp size={20} color="#9945FF" />
+                </div>
+                <p style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 20px 0' }}>
+                  <MapPin size={14} /> {villa.location}
+                </p>
+
+                <div style={{ display: 'flex', gap: '16px', marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid var(--bg-color)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-muted)' }}><Bed size={16} color="#9945FF" /> {villa.bedrooms} Beds</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-muted)' }}><Bath size={16} color="#9945FF" /> {villa.bathrooms} Baths</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-muted)' }}><Layout size={16} color="#9945FF" /> {villa.sqm} m²</div>
+                </div>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '8px' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Funding Progress</span>
+                    <span style={{ fontWeight: 800, color: '#14f195' }}>
+                      {tokensSold.toLocaleString()} / {villa.totalTokens.toLocaleString()} ({((tokensSold / villa.totalTokens) * 100).toFixed(1)}%)
+                    </span>
+                  </div>
+                  <div className="progress-bar" style={{ backgroundColor: 'var(--glass-white-lg)' }}>
+                    <div className="progress-bar__fill" style={{ width: `${(tokensSold / villa.totalTokens) * 100}%` }}></div>
+                  </div>
+                  <div style={{ marginTop: '6px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                    {(tokensSold || 0).toLocaleString()} / {(villa.totalTokens || 0).toLocaleString()} tokens sold
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
+                  <div style={{ background: 'var(--surface-muted)', padding: '12px', borderRadius: '16px', border: '1px solid var(--card-border)' }}>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '4px' }}>ANNUAL YIELD (ARY)</div>
+                    <div style={{ fontSize: '1rem', fontWeight: 800, color: '#9945FF' }}>{villa.ary}%</div>
+                  </div>
+                  <div style={{ background: 'var(--surface-muted)', padding: '12px', borderRadius: '16px', border: '1px solid var(--card-border)' }}>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '4px' }}>STATUS</div>
+                    <div style={{ fontSize: '1rem', fontWeight: 800, color: '#14f195' }}>{villa.occupancyStatus}</div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setSelectedVilla(villa)}
+                  style={{ width: '100%', padding: '14px', borderRadius: '16px', border: '1px solid #9945FF', background: 'transparent', color: '#9945FF', fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
+                >
+                  Analyze & Invest <ChevronRight size={18} />
+                </button>
+              </div>
+            </div>
+          );
+        })}
       </main>
 
       {selectedVilla && (
@@ -510,13 +546,13 @@ export default function Dashboard() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2.5rem' }}>
                   <div>
                     {selectedVilla.images?.[0]?.endsWith('.mp4') ? (
-                      <video 
-                        src={selectedVilla.images[0]} 
-                        style={{ width: '100%', borderRadius: '24px', marginBottom: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} 
-                        autoPlay 
-                        muted 
-                        loop 
-                        playsInline 
+                      <video
+                        src={selectedVilla.images[0]}
+                        style={{ width: '100%', borderRadius: '24px', marginBottom: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
                       />
                     ) : (
                       <img src={selectedVilla.images?.[0] || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&q=80&w=800'} alt={selectedVilla.name} style={{ width: '100%', borderRadius: '24px', marginBottom: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
@@ -582,28 +618,28 @@ export default function Dashboard() {
 
                       {selectedVilla.nftAddress ? (
                         <button
-                            onClick={handleSolanaAcquisition}
-                            style={{
-                              width: '100%',
-                              padding: '20px',
-                              borderRadius: '20px',
-                              background: 'linear-gradient(90deg, #9945FF, #14F195)',
-                              color: 'white',
-                              fontWeight: 900,
-                              fontSize: '1.1rem',
-                              border: 'none',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              justifyContent: 'center',
-                              alignItems: 'center',
-                              gap: '12px',
-                              boxShadow: '0 8px 25px rgba(153, 69, 255, 0.4)',
-                              transition: 'all 0.3s'
-                            }}
-                          >
-                            <CloudLightning size={24} />
-                            {publicKey ? `Invest ${investAmount} Shares (SOL)` : "Connect Wallet to Invest"}
-                          </button>
+                          onClick={handleSolanaAcquisition}
+                          style={{
+                            width: '100%',
+                            padding: '20px',
+                            borderRadius: '20px',
+                            background: 'linear-gradient(90deg, #9945FF, #14F195)',
+                            color: 'white',
+                            fontWeight: 900,
+                            fontSize: '1.1rem',
+                            border: 'none',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            gap: '12px',
+                            boxShadow: '0 8px 25px rgba(153, 69, 255, 0.4)',
+                            transition: 'all 0.3s'
+                          }}
+                        >
+                          <CloudLightning size={24} />
+                          {publicKey ? `Invest ${investAmount} Shares (SOL)` : "Connect Wallet to Invest"}
+                        </button>
                       ) : (
                         <div style={{ padding: '16px', background: '#fef2f2', borderRadius: '12px', border: '1px solid #fee2e2', color: '#ef4444', fontSize: '0.85rem' }}>
                           Invalid NFT Address: {selectedVilla.nftAddress || 'Missing Address'}. This asset cannot be acquired on-chain yet.

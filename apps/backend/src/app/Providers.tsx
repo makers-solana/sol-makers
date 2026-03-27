@@ -8,7 +8,7 @@ import {
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
 import { clusterApiUrl } from '@solana/web3.js';
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 
 // Default styles that can be overridden by your app
 import '@solana/wallet-adapter-react-ui/styles.css';
@@ -26,6 +26,18 @@ export default function Providers({
     ],
     []
   );
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const walletName = params.get('wallet');
+    if (walletName) {
+      localStorage.setItem('walletName', JSON.stringify(walletName));
+      // Remove the param from URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete('wallet');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, []);
 
   return (
     <ThirdwebProvider>
