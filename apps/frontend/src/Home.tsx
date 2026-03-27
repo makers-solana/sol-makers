@@ -1,5 +1,5 @@
 import React, { useLayoutEffect, useRef, useState } from "react";
-import { ArrowRight, Info } from "lucide-react";
+import { ArrowRight, Info, Menu, X, Sun, Moon, Globe } from "lucide-react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import "./Home.css";
 
@@ -17,6 +17,7 @@ const Home = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
   const progressBarRef = useRef<HTMLDivElement>(null);
   const hintBoxRef = useRef<HTMLDivElement>(null);
   const [hintPressed, setHintPressed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { wallet, connected = false } = useWallet();
 
   // Helper to append wallet param to external links
@@ -48,8 +49,11 @@ const Home = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
       start: "top top",
       end: "bottom bottom",
       onUpdate: (self: any) => {
-        if (progressBarRef.current)
-          progressBarRef.current.style.width = `${Math.round(self.progress * 100)}%`;
+        const bars = document.querySelectorAll(".progress__bar");
+        const percent = `${Math.round(self.progress * 100)}%`;
+        bars.forEach((bar: any) => {
+          bar.style.width = percent;
+        });
       },
     });
 
@@ -229,7 +233,7 @@ const Home = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
           <span className="pill" ref={activeLabelRef}>Intro</span>
         </div>
 
-        <nav className="right">
+        <nav className="right header-nav-desktop">
           <button
             className="chip"
             style={{ marginRight: '10px' }}
@@ -256,7 +260,68 @@ const Home = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
             <div className="progress__bar" ref={progressBarRef}></div>
           </div>
         </nav>
+
+        {/* Mobile Hamburger Toggle */}
+        <button 
+          className="mobile-menu-toggle"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          style={{ 
+            display: 'none', 
+            background: 'rgba(255, 255, 255, 0.05)', 
+            border: '1px solid rgba(255, 255, 255, 0.1)', 
+            color: 'white',
+            padding: '8px',
+            borderRadius: '12px',
+            cursor: 'pointer',
+            zIndex: 1001
+          }}
+        >
+          {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
       </header>
+
+      {/* Mobile Menu Drawer */}
+      <div className={`mobile-drawer ${isMobileMenuOpen ? 'open' : ''}`} style={{
+        position: 'fixed',
+        top: 0,
+        right: 0,
+        width: '280px',
+        height: '100vh',
+        backgroundColor: '#07080c',
+        zIndex: 2000,
+        padding: '80px 24px 24px 24px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '30px',
+        boxShadow: '-10px 0 30px rgba(0,0,0,0.5)',
+        transition: 'transform 0.3s ease-in-out',
+        transform: isMobileMenuOpen ? 'translateX(0)' : 'translateX(100%)',
+        borderLeft: '1px solid rgba(255, 255, 255, 0.1)',
+        backdropFilter: 'blur(20px)',
+      }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255, 255, 255, 0.4)', letterSpacing: '0.1em' }}>NAVIGATION</span>
+          <a href="#" onClick={(e) => { e.preventDefault(); handleJumpTop(); setIsMobileMenuOpen(false); }} style={{ color: 'white', textDecoration: 'none', fontSize: '1.25rem', fontWeight: 700 }}>Home</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); onNavigate('marketplace'); }} style={{ color: 'white', textDecoration: 'none', fontSize: '1.25rem', fontWeight: 700 }}>Marketplace</a>
+          <a href={getSyncUrl("http://localhost:3001/")} style={{ color: 'white', textDecoration: 'none', fontSize: '1.25rem', fontWeight: 700 }}>Asset & Earning</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); setHintPressed(true); setIsMobileMenuOpen(false); }} style={{ color: 'white', textDecoration: 'none', fontSize: '1.25rem', fontWeight: 700 }}>About Us</a>
+        </div>
+
+        <div style={{ marginTop: 'auto', padding: '20px', borderRadius: '14px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+          <div className="progress" aria-label="Scroll progress" style={{ width: '100%', marginBottom: '10px' }}>
+            <div className="progress__bar" ref={progressBarRef}></div>
+          </div>
+          <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.4)' }}>Scroll Progress</span>
+        </div>
+      </div>
+
+      {/* Overlay for Mobile Menu */}
+      {isMobileMenuOpen && (
+        <div 
+          onClick={() => setIsMobileMenuOpen(false)}
+          style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', zIndex: 1500 }}
+        />
+      )}
 
       <main className="slides-wrapper" id="wrap" ref={wrapRef}>
         {/* Panel 1 */}
@@ -303,11 +368,20 @@ const Home = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
                 </button>
               </div>
 
-              {hintPressed && (
-                <div className="hint" style={{ display: 'block' }}>
-                  Tip: Scroll down to explore the portfolio and technical metrics.
+              {/* Hint Box (About Us) */}
+              <div 
+                className="hint" 
+                ref={hintBoxRef}
+                style={{ display: hintPressed ? 'block' : 'none' }}
+              >
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                  <Info size={18} style={{ color: 'var(--accent2)', marginTop: '2px' }} />
+                  <div>
+                    <strong>The Makers Protocol</strong> allows fractional ownership of premium Balinese villas. 
+                    Each token represents a real-world share with automated rental yield distribution.
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
 
             <div className="media">
@@ -440,7 +514,7 @@ const Home = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
                 </div>
                 <div className="tile">
                   <img
-                    src="https://images.unsplash.com/photo-1626014303757-636611689342?auto=format&fit=crop&q=80&w=800"
+                    src="https://balivillasale.com/wp-content/uploads/2022/12/WhatsApp-Image-2022-12-19-at-12.27.30-2-592x444.jpeg"
                     alt="Villa 3"
                   />
                   <span className="tile__cap">Uluwatu Sky</span>

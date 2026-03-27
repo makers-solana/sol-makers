@@ -572,3 +572,45 @@ body {
     backdrop-filter: var(--blur-md);
     border-bottom: 1px solid var(--glass-border-subtle);
 }
+
+/* Responsiveness for ERP */
+@media (max-width: 980px) {
+    .sidebar {
+        display: none !important;
+    }
+
+    .main-view {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+
+    .header-nav-desktop {
+        display: none !important;
+    }
+
+    .mobile-menu-toggle {
+        display: block !important;
+    }
+
+    .section-content {
+        padding: 10px !important;
+    }
+
+    .card-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .spotify-table {
+        display: block;
+        overflow-x: auto;
+    }
+}
+
+/* Drawer Animation */
+.mobile-drawer {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mobile-drawer.open {
+    transform: translateX(0) !important;
+}

@@ -20,7 +20,9 @@ import {
     Eye,
     Globe,
     ShieldCheck,
-    Settings
+    Settings,
+    Menu,
+    X
 } from 'lucide-react';
 import { ConnectButton, useActiveAccount, useReadContract } from "thirdweb/react";
 import { client } from "../lib/thirdweb";
@@ -42,6 +44,7 @@ export default function ERPDashboard() {
     const [villas, setVillas] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showListingModal, setShowListingModal] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [referralStats, setReferralStats] = useState<any>({
         totalEarned: 0,
         totalReferrals: 0,
@@ -59,18 +62,20 @@ export default function ERPDashboard() {
     const { publicKey, connected: solanaConnected } = useWallet();
 
     useEffect(() => {
-        fetchData();
-        if (publicKey) {
-            fetchReferralStats(publicKey.toBase58());
-        } else {
-            setReferralStats({
-                totalEarned: 0,
-                totalReferrals: 0,
-                pendingPayout: 0,
-                history: []
-            });
+        if (hasMounted) {
+            fetchData();
+            if (publicKey) {
+                fetchReferralStats(publicKey.toBase58());
+            } else {
+                setReferralStats({
+                    totalEarned: 0,
+                    totalReferrals: 0,
+                    pendingPayout: 0,
+                    history: []
+                });
+            }
         }
-    }, [publicKey]);
+    }, [publicKey, hasMounted]);
 
     const fetchReferralStats = async (address: string) => {
         try {
@@ -303,7 +308,7 @@ export default function ERPDashboard() {
                     <span style={{ marginLeft: '8px', padding: '6px 10px', borderRadius: '999px', border: '1px solid var(--border)', background: 'rgba(255, 255, 255, 0.04)', color: 'var(--spotify-gray-lighter)', fontSize: '12px' }}>Asset & Earning</span>
                 </div>
 
-                <nav className="glass-nav" aria-label="Main navigation" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <nav className="glass-nav header-nav-desktop" aria-label="Main navigation" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <a href="http://localhost:3000/" className="glass-btn glass-btn--ghost glass-btn--sm" style={{ padding: '9px 12px' }}>Home</a>
                     <a href="http://localhost:3000/marketplace" className="glass-btn glass-btn--ghost glass-btn--sm" style={{ padding: '9px 12px' }}>Marketplace</a>
                     <a href="#" className="glass-btn glass-btn--primary glass-btn--sm" style={{ padding: '9px 12px' }}>Asset & Earning</a>
@@ -311,9 +316,74 @@ export default function ERPDashboard() {
                 </nav>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <WalletMultiButton />
+                    <div className="header-nav-desktop">
+                        <WalletMultiButton />
+                    </div>
+                    {/* Mobile Hamburger Toggle */}
+                    <button 
+                        className="mobile-menu-toggle"
+                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                        style={{ 
+                            display: 'none', 
+                            background: 'rgba(255, 255, 255, 0.1)', 
+                            border: '1px solid rgba(255, 255, 255, 0.2)', 
+                            color: 'white',
+                            padding: '8px',
+                            borderRadius: '12px',
+                            cursor: 'pointer',
+                            zIndex: 1001
+                        }}
+                    >
+                        {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                    </button>
                 </div>
             </nav>
+
+            {/* Mobile Menu Drawer */}
+            <div className={`mobile-drawer ${isMobileMenuOpen ? 'open' : ''}`} style={{
+                position: 'fixed',
+                top: 0,
+                right: 0,
+                width: '280px',
+                height: '100vh',
+                backgroundColor: '#05070e',
+                zIndex: 2000,
+                padding: '80px 24px 24px 24px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '30px',
+                boxShadow: '-10px 0 30px rgba(0,0,0,0.5)',
+                transition: 'transform 0.3s ease-in-out',
+                transform: isMobileMenuOpen ? 'translateX(0)' : 'translateX(100%)',
+                borderLeft: '1px solid rgba(255, 255, 255, 0.1)',
+                backdropFilter: 'blur(20px)',
+            }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255, 255, 255, 0.4)', letterSpacing: '0.1em' }}>NAVIGATION</span>
+                    <a href="http://localhost:3000/" style={{ color: 'white', textDecoration: 'none', fontSize: '1.25rem', fontWeight: 700 }}>Home</a>
+                    <a href="http://localhost:3000/marketplace" style={{ color: 'white', textDecoration: 'none', fontSize: '1.25rem', fontWeight: 700 }}>Marketplace</a>
+                    <a href="#" onClick={(e) => { e.preventDefault(); setIsMobileMenuOpen(false); }} style={{ color: 'var(--spotify-green)', textDecoration: 'none', fontSize: '1.25rem', fontWeight: 700 }}>Asset & Earning</a>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255, 255, 255, 0.4)', letterSpacing: '0.1em' }}>ERP SECTIONS</span>
+                    <button className={`nav-item ${activeSection === 'dashboard' ? 'active' : ''}`} onClick={() => { setActiveSection('dashboard'); setIsMobileMenuOpen(false); }} style={{ color: 'white', textAlign: 'left', background: 'none', border: 'none', fontSize: '1.1rem', padding: '10px 0', cursor: 'pointer' }}>Dashboard</button>
+                    <button className={`nav-item ${activeSection === 'collections' ? 'active' : ''}`} onClick={() => { setActiveSection('collections'); setIsMobileMenuOpen(false); }} style={{ color: 'white', textAlign: 'left', background: 'none', border: 'none', fontSize: '1.1rem', padding: '10px 0', cursor: 'pointer' }}>Registry</button>
+                    <button className={`nav-item ${activeSection === 'referrals' ? 'active' : ''}`} onClick={() => { setActiveSection('referrals'); setIsMobileMenuOpen(false); }} style={{ color: 'white', textAlign: 'left', background: 'none', border: 'none', fontSize: '1.1rem', padding: '10px 0', cursor: 'pointer' }}>Referral Hub</button>
+                </div>
+
+                <div style={{ marginTop: 'auto' }}>
+                    <WalletMultiButton />
+                </div>
+            </div>
+
+            {/* Overlay for Mobile Menu */}
+            {isMobileMenuOpen && (
+                <div 
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', zIndex: 1500 }}
+                />
+            )}
 
             {/* Sidebar */}
             <aside className="sidebar">

@@ -783,6 +783,28 @@ button {
         padding-top: 60px;
         padding-bottom: 60px;
     }
+
+    .header-nav-desktop {
+        display: none !important;
+    }
+
+    .mobile-menu-toggle {
+        display: block !important;
+    }
+
+    .topbar {
+        height: 64px;
+        padding: 0 16px;
+    }
+}
+
+/* Drawer Animation */
+.mobile-drawer {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mobile-drawer.open {
+    transform: translateX(0) !important;
 }
 
 /* Mobile (Small) */

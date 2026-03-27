@@ -11,7 +11,7 @@
   /* ── Borders ── */
   --glass-border: rgba(255, 255, 255, 0.25);
   --glass-border-subtle: rgba(255, 255, 255, 0.12);
-  --glass-border-bright: rgba(37, 35, 35, 0.5);
+  --glass-border-bright: rgba(255, 255, 255, 0.5);
 
   /* ── Blur values ── */
   --blur-sm: blur(8px);
@@ -95,16 +95,16 @@
 }
 
 [data-theme="light"] {
-  --glass-white: rgba(31, 31, 31, 0.62);
-  --glass-white-md: rgba(23, 23, 23, 0.78);
-  --glass-white-lg: rgba(49, 48, 48, 0.9);
+  --glass-white: rgba(255, 255, 255, 0.62);
+  --glass-white-md: rgba(255, 255, 255, 0.78);
+  --glass-white-lg: rgba(255, 255, 255, 0.9);
   --glass-dark: rgba(0, 0, 0, 0.06);
   --glass-dark-md: rgba(15, 23, 42, 0.08);
   --glass-border: rgba(15, 23, 42, 0.14);
   --glass-border-subtle: rgba(15, 23, 42, 0.09);
   --glass-border-bright: rgba(15, 23, 42, 0.22);
-  --color-bg: #5b646e;
-  --color-surface: rgba(31, 31, 31, 0.55);
+  --color-bg: #e8f0fa;
+  --color-surface: rgba(255, 255, 255, 0.55);
   --color-text: #0f172a;
   --color-text-muted: rgba(15, 23, 42, 0.58);
   --accent-aqua: #0891b2;
@@ -432,5 +432,62 @@ body {
     left: 100%;
     transform: rotate(-180deg);
     opacity: 0;
+  }
+}
+
+/* Responsive Grid for Marketplace */
+.dashboard-grid {
+  display: grid;
+  gap: 20px;
+  width: 100%;
+  grid-template-columns: repeat(1, 1fr);
+  padding: 40px 20px !important;
+}
+
+@media (min-width: 640px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+    padding: 60px 30px !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(4, 1fr);
+    padding: 60px 40px !important;
+  }
+}
+
+/* Responsive Navbar Adjustments */
+@media (max-width: 768px) {
+  nav.glass {
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    padding: 12px 20px !important;
+    height: 70px !important;
+    position: fixed !important;
+    top: 20px !important;
+    left: 20px !important;
+    right: 20px !important;
+    width: auto !important;
+  }
+
+  .nav-actions-desktop, .glass-nav {
+    display: none !important;
+  }
+
+  .mobile-menu-toggle {
+    display: block !important;
+  }
+
+  nav.glass-nav {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .solana-connect-button-wrapper {
+    width: 100%;
+    justify-content: center;
+    flex-direction: column;
   }
 }

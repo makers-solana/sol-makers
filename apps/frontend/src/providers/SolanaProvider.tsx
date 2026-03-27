@@ -7,16 +7,22 @@ import {
     WalletMultiButton
 } from '@solana/wallet-adapter-react-ui';
 import { clusterApiUrl } from '@solana/web3.js';
+import { useNetwork } from './NetworkProvider';
 
 // Default styles that can be overridden by your app
 import '@solana/wallet-adapter-react-ui/styles.css';
 
 export const SolanaProvider: FC<{ children: ReactNode }> = ({ children }) => {
-    // The network can be set to 'devnet', 'testnet', or 'mainnet-beta'.
-    const network = WalletAdapterNetwork.Devnet;
+    const { network: currentNetwork } = useNetwork();
+
+    // Mapping 'devnet' | 'mainnet' to Solana Cluster
+    const solanaCluster = useMemo(() => {
+        if (currentNetwork === 'mainnet') return WalletAdapterNetwork.Mainnet;
+        return WalletAdapterNetwork.Devnet;
+    }, [currentNetwork]);
 
     // You can also provide a custom RPC endpoint.
-    const endpoint = useMemo(() => clusterApiUrl(network), [network]);
+    const endpoint = useMemo(() => clusterApiUrl(solanaCluster), [solanaCluster]);
 
     const wallets = useMemo(
         () => [
@@ -32,7 +38,7 @@ export const SolanaProvider: FC<{ children: ReactNode }> = ({ children }) => {
              */
         ],
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [network]
+        [solanaCluster]
     );
 
     useEffect(() => {

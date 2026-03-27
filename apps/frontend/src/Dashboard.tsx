@@ -5,7 +5,8 @@ import { defineChain, getContract } from "thirdweb";
 import { buyFromListing, getAllValidListings } from "thirdweb/extensions/marketplace";
 import { totalSupply } from "thirdweb/extensions/erc1155";
 import { client } from "./lib/thirdweb";
-import { Wallet, MapPin, TrendingUp, ShieldCheck, Activity, Bed, Bath, Layout, Calculator, Clock, ChevronRight, CheckCircle2, CloudLightning, Sun, Moon } from 'lucide-react';
+import { useNetwork, SolanaNetwork } from './providers/NetworkProvider';
+import { Wallet, MapPin, TrendingUp, ShieldCheck, Activity, Bed, Bath, Layout, Calculator, Clock, ChevronRight, CheckCircle2, CloudLightning, Sun, Moon, Globe, Menu, X } from 'lucide-react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { Transaction, SystemProgram, PublicKey } from '@solana/web3.js';
@@ -26,15 +27,10 @@ const solanaDevnet = defineChain({
 });
 
 // Treasury Wallet Address (Multisig Squads)
-// Owners: 
-// 1. 6vSg9Wjodtn5YiGq3A4npRg9ffDQgi8AnBAYA5DovdoL
-// 2. 4tbNceS9JRKt14A9WUcdRfgTG5SbNiDcvcQKMr28fB5S
-// 3. 4KcjU8zKHQjWkngDEx2337v3u4woiZMxXchMsbSUCeGm
-// 4. 41MLp5oX9yYwNoMCcQUw9ZRZQazEacU5JThrGv6E5wMU
-// Threshold: 3/4
 const TREASURY_WALLET_ADDRESS = '41MLp5oX9yYwNoMCcQUw9ZRZQazEacU5JThrGv6E5wMU';
 
 export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) => void }) {
+  const { network, setNetwork } = useNetwork();
   const [villas, setVillas] = useState<any[]>([]);
   const [selectedVilla, setSelectedVilla] = useState<any>(null);
   const [investAmount, setInvestAmount] = useState<number>(1);
@@ -45,6 +41,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
   const [idrRate, setIdrRate] = useState<number>(15500 * 150);
   const [referralAddress, setReferralAddress] = useState<string>('');
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Solana Wallet Adapter hooks
   const { publicKey, wallet, sendTransaction, connected: solanaConnected } = useWallet();
@@ -60,7 +57,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
     extractReferral();
     const interval = setInterval(fetchSolPrice, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [network]);
 
   const extractReferral = () => {
     try {
@@ -91,13 +88,12 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
       const data = await response.json();
       if (data.solana && data.solana.usd) {
         setSolPriceUsd(data.solana.usd);
-        setIdrRate(data.solana.idr); // Assuming setIdrRate is the correct setter for IDR price
+        setIdrRate(data.solana.idr);
       } else {
         throw new Error("Invalid price data");
       }
     } catch (e) {
       console.error("Failed to fetch SOL price, using fallback", e);
-      // Fallback price if API times out or fails
       if (solPriceUsd === 0) setSolPriceUsd(150);
     }
   };
@@ -112,12 +108,9 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
   const fetchTokenSupply = async (mintAddress: string) => {
     try {
       const mintPubkey = new PublicKey(mintAddress);
-
-      // Get Total Supply
       const supplyInfo = await connection.getTokenSupply(mintPubkey);
       const totalSupply = supplyInfo.value.uiAmount || 0;
 
-      // Get Treasury Balance (tokens NOT sold yet)
       try {
         const treasuryPubkey = new PublicKey(TREASURY_WALLET_ADDRESS);
         const tokenAccounts = await connection.getTokenAccountsByOwner(treasuryPubkey, { mint: mintPubkey });
@@ -128,12 +121,11 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
           treasuryBalance = balanceRecord.value.uiAmount || 0;
         }
 
-        // Sold = Total Supply - Treasury Balance
         const sold = Math.max(0, totalSupply - treasuryBalance);
         return sold;
       } catch (balErr) {
         console.warn(`Could not fetch treasury balance for ${mintAddress}, returning total supply:`, balErr);
-        return totalSupply; // Fallback to total supply if treasury check fails
+        return totalSupply;
       }
     } catch (e) {
       console.error(`Failed to fetch supply for ${mintAddress}:`, e);
@@ -144,31 +136,43 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
   const fetchVillas = async () => {
     try {
       setIsLoading(true);
-      // Force display ONLY the specific asset requested by the user
-      // Real NFT Mint Addresses on Solana Devnet
-      // Real NFT Mint Addresses on Solana Devnet
-      // REPLACE these with your own Mint Addresses as you deploy them!
-      const REAL_NFT_ADDRESSES = {
-        v1: 'BxUy8Xyj4ZXJsc6m6HdqPNQT9UY35dbUM4bLMVHCBZoS', // Makers Sunset Villa
-        v2: 'd4Qqt3UzxcQBhqpRBZcQzknokCiGA82RRMzzwXBPYUg', // Placeholder
-        v3: 'GABXPkqndQ7Fb7C2CST4pff1VkQXjcCtuvCdPpSRuQHy', // Placeholder
-        v4: '5uNBRRYNEux1GovaiRrgaGJAHRUBp8hXQqNMdkFgFVf8', // Placeholder
+      
+      const NFT_ADDRESSES: Record<SolanaNetwork, Record<string, string>> = {
+        devnet: {
+          v1: 'BxUy8Xyj4ZXJsc6m6HdqPNQT9UY35dbUM4bLMVHCBZoS',
+          v2: 'd4Qqt3UzxcQBhqpRBZcQzknokCiGA82RRMzzwXBPYUg',
+          v3: 'GABXPkqndQ7Fb7C2CST4pff1VkQXjcCtuvCdPpSRuQHy',
+          v4: '5uNBRRYNEux1GovaiRrgaGJAHRUBp8hXQqNMdkFgFVf8',
+        },
+        mainnet: {
+          v1: '',
+          v2: '',
+          v3: '',
+          v4: '',
+        }
       };
 
-      const v1Sold = await fetchTokenSupply(REAL_NFT_ADDRESSES.v1);
-      await delay(500);
-      const v2Sold = await fetchTokenSupply(REAL_NFT_ADDRESSES.v2);
-      await delay(500);
-      const v3Sold = await fetchTokenSupply(REAL_NFT_ADDRESSES.v3);
-      await delay(500);
-      const v4Sold = await fetchTokenSupply(REAL_NFT_ADDRESSES.v4);
+      const currentAddresses = NFT_ADDRESSES[network];
 
-      const backendVillas = [
-        {
+      const getSafeSupply = async (address: string) => {
+        if (!address) return 0;
+        try {
+          return await fetchTokenSupply(address);
+        } catch (e) {
+          console.warn(`Failed to fetch supply for ${address} on ${network}`);
+          return 0;
+        }
+      };
+
+      const backendVillas = [];
+      
+      if (currentAddresses.v1) {
+        const v1Sold = await getSafeSupply(currentAddresses.v1);
+        backendVillas.push({
           id: 'v1',
           name: 'Uluwatu Cliffside Villa',
           location: 'Uluwatu, Bali',
-          nftAddress: REAL_NFT_ADDRESSES.v1,
+          nftAddress: currentAddresses.v1,
           pricePerShareUsd: 100,
           ery: '12.5',
           ary: '12.5',
@@ -181,12 +185,17 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
           images: ['/assets/Villa 1.gif.mp4'],
           description: 'Premium fractionalized modern cliffside villa in Uluwatu, Bali. 40,000 shares available.',
           chain: 'solana'
-        },
-        {
+        });
+      }
+
+      if (currentAddresses.v2) {
+        await delay(200);
+        const v2Sold = await getSafeSupply(currentAddresses.v2);
+        backendVillas.push({
           id: 'v2',
           name: 'Ubud Jungle Retreat',
           location: 'Ubud, Bali',
-          nftAddress: REAL_NFT_ADDRESSES.v2,
+          nftAddress: currentAddresses.v2,
           pricePerShareUsd: 100,
           ery: '9.2',
           ary: '9.2',
@@ -199,12 +208,17 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
           images: ['/assets/Villa 2.gif.mp4'],
           description: 'Luxury tropical jungle villa in Ubud, surrounded by palm trees. 40,000 shares available.',
           chain: 'solana'
-        },
-        {
+        });
+      }
+
+      if (currentAddresses.v3) {
+        await delay(200);
+        const v3Sold = await getSafeSupply(currentAddresses.v3);
+        backendVillas.push({
           id: 'v3',
           name: 'Seminyak Beachfront Villa',
           location: 'Seminyak, Bali',
-          nftAddress: REAL_NFT_ADDRESSES.v3,
+          nftAddress: currentAddresses.v3,
           pricePerShareUsd: 100,
           ery: '14.0',
           ary: '14.0',
@@ -217,12 +231,17 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
           images: ['/assets/Villa 3.gif.mp4'],
           description: 'Exclusive luxury beachfront villa in Seminyak, perfect for sunset views. 40,000 shares available.',
           chain: 'solana'
-        },
-        {
+        });
+      }
+
+      if (currentAddresses.v4) {
+        await delay(200);
+        const v4Sold = await getSafeSupply(currentAddresses.v4);
+        backendVillas.push({
           id: 'v4',
           name: 'Canggu Eco Villa',
           location: 'Canggu, Bali',
-          nftAddress: REAL_NFT_ADDRESSES.v4,
+          nftAddress: currentAddresses.v4,
           pricePerShareUsd: 100,
           ery: '11.0',
           ary: '11.0',
@@ -235,8 +254,8 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
           images: ['/assets/Villa 4.gif.mp4'],
           description: 'Minimalist eco-friendly villa with stunning rice terrace views in Canggu. 40,000 shares available.',
           chain: 'solana'
-        }
-      ];
+        });
+      }
 
       setVillas(backendVillas);
       setIsLoading(false);
@@ -387,46 +406,169 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
           <a href="/about" onClick={(e) => { e.preventDefault(); onNavigate?.('about'); }} className="glass-btn glass-btn--ghost glass-btn--sm" style={{ padding: '9px 12px' }}>About Us</a>
         </nav>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
-          <div style={{ display: 'flex', backgroundColor: 'var(--card-border)', padding: '4px', borderRadius: '12px' }}>
-            <button
-              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-              style={{
-                padding: '8px',
-                borderRadius: '10px',
-                border: 'none',
-                background: 'transparent',
-                color: 'var(--text-color)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.2s'
-              }}
-              title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
-            >
-              {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
-            </button>
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          {/* Mobile Hamburger Toggle */}
+          <button 
+            className="mobile-menu-toggle"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            style={{ 
+              display: 'none', 
+              background: 'var(--surface-muted)', 
+              border: '1px solid var(--card-border)', 
+              color: 'var(--text-color)',
+              padding: '10px',
+              borderRadius: '12px',
+              cursor: 'pointer',
+              zIndex: 1001
+            }}
+          >
+            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
 
-          <div className="solana-connect-button-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {publicKey && (
+          <div className="nav-actions-desktop" style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <div style={{ display: 'flex', backgroundColor: 'var(--card-border)', padding: '4px', borderRadius: '16px' }}>
               <button
-                className="glass-btn glass-btn--ghost glass-btn--sm"
-                onClick={copyReferralLink}
-                style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-violet)' }}
+                onClick={() => setNetwork('devnet')}
+                style={{
+                  padding: '8px 20px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  background: network === 'devnet' ? 'linear-gradient(90deg, #9945FF, #14F195)' : 'transparent',
+                  color: network === 'devnet' ? 'white' : 'var(--text-muted)',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                  fontWeight: 800,
+                  letterSpacing: '0.05em',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  boxShadow: network === 'devnet' ? '0 4px 12px rgba(153, 69, 255, 0.3)' : 'none'
+                }}
               >
-                Copy Referral Link
+                DEVNET
               </button>
-            )}
-            <div className="solana-adapter-wrapper">
-              <WalletMultiButton style={{ backgroundColor: '#9945FF', borderRadius: '12px', height: '44px', padding: '0 24px' }} />
+              <button
+                onClick={() => setNetwork('mainnet')}
+                style={{
+                  padding: '8px 20px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  background: network === 'mainnet' ? 'linear-gradient(90deg, #14F195, #9945FF)' : 'transparent',
+                  color: network === 'mainnet' ? 'white' : 'var(--text-muted)',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                  fontWeight: 800,
+                  letterSpacing: '0.05em',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  boxShadow: network === 'mainnet' ? '0 4px 12px rgba(20, 241, 149, 0.3)' : 'none'
+                }}
+              >
+                MAINNET
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', backgroundColor: 'var(--card-border)', padding: '4px', borderRadius: '12px' }}>
+              <button
+                onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+                style={{
+                  padding: '8px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: 'transparent',
+                  color: 'var(--text-color)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.2s'
+                }}
+                title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
+              >
+                {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+              </button>
+            </div>
+
+            <div className="solana-connect-button-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {publicKey && (
+                <button
+                  className="glass-btn glass-btn--ghost glass-btn--sm"
+                  onClick={copyReferralLink}
+                  style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-violet)' }}
+                >
+                  Copy Referral Link
+                </button>
+              )}
+              <div className="solana-adapter-wrapper">
+                <WalletMultiButton style={{ backgroundColor: '#9945FF', borderRadius: '12px', height: '44px', padding: '0 24px' }} />
+              </div>
             </div>
           </div>
         </div>
+
       </nav>
 
-      <main className="dashboard-grid" style={{ padding: '60px 40px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '40px' }}>
+      {/* Mobile Menu Drawer */}
+      <div className={`mobile-drawer ${isMobileMenuOpen ? 'open' : ''}`} style={{
+        position: 'fixed',
+        top: 0,
+        right: 0,
+        width: '280px',
+        height: '100vh',
+        backgroundColor: 'var(--card-bg)',
+        zIndex: 2000,
+        padding: '80px 24px 24px 24px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '30px',
+        boxShadow: '-10px 0 30px rgba(0,0,0,0.2)',
+        transition: 'transform 0.3s ease-in-out',
+        transform: isMobileMenuOpen ? 'translateX(0)' : 'translateX(100%)',
+        borderLeft: '1px solid var(--card-border)',
+        backdropFilter: 'blur(10px)',
+      }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.1em' }}>NAVIGATION</span>
+          <a href="/" style={{ color: 'var(--text-color)', textDecoration: 'none', fontSize: '1.25rem', fontWeight: 700 }}>Home</a>
+          <a href="#" style={{ color: '#9945FF', textDecoration: 'none', fontSize: '1.25rem', fontWeight: 700 }}>Marketplace</a>
+          <a href={solanaConnected && wallet?.adapter.name ? `http://localhost:3001/?wallet=${encodeURIComponent(wallet.adapter.name)}` : "http://localhost:3001/"} style={{ color: 'var(--text-color)', textDecoration: 'none', fontSize: '1.25rem', fontWeight: 700 }}>Asset & Earning</a>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.1em' }}>NETWORK</span>
+          <div style={{ display: 'flex', backgroundColor: 'var(--card-border)', padding: '4px', borderRadius: '16px', width: 'fit-content' }}>
+            <button 
+              onClick={() => { setNetwork('devnet'); setIsMobileMenuOpen(false); }}
+              style={{ padding: '8px 16px', borderRadius: '12px', border: 'none', background: network === 'devnet' ? 'linear-gradient(90deg, #9945FF, #14F195)' : 'transparent', color: network === 'devnet' ? 'white' : 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800 }}
+            >DEVNET</button>
+            <button 
+              onClick={() => { setNetwork('mainnet'); setIsMobileMenuOpen(false); }}
+              style={{ padding: '8px 16px', borderRadius: '12px', border: 'none', background: network === 'mainnet' ? 'linear-gradient(90deg, #14F195, #9945FF)' : 'transparent', color: network === 'mainnet' ? 'white' : 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800 }}
+            >MAINNET</button>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.1em' }}>THEME</span>
+          <button
+            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+            style={{ padding: '12px', borderRadius: '12px', border: '1px solid var(--card-border)', background: 'var(--surface-muted)', color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 700 }}
+          >
+            {theme === 'light' ? <><Moon size={20} /> Dark Mode</> : <><Sun size={20} /> Light Mode</>}
+          </button>
+        </div>
+
+        <div className="solana-adapter-wrapper" style={{ marginTop: 'auto' }}>
+          <WalletMultiButton style={{ backgroundColor: '#9945FF', borderRadius: '12px', height: '44px', width: '100%' }} />
+        </div>
+      </div>
+
+      {/* Overlay for Mobile Menu */}
+      {isMobileMenuOpen && (
+        <div 
+          onClick={() => setIsMobileMenuOpen(false)}
+          style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 1500 }}
+        />
+      )}
+
+      <main className="dashboard-grid">
         {villas.map((villa) => {
           const tokensSold = villa.tokensSold || 0;
 
@@ -434,13 +576,14 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
             <div key={villa.id} className="glass glass-card" style={{
               display: 'flex',
               flexDirection: 'column',
-              padding: 0
+              padding: 0,
+              overflow: 'hidden'
             }}>
-              <div style={{ position: 'relative', height: '240px' }}>
+              <div style={{ position: 'relative', height: '240px', backgroundColor: 'rgba(0,0,0,0.2)' }}>
                 {villa.images?.[0]?.endsWith('.mp4') ? (
                   <video
                     src={villa.images[0]}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                     autoPlay
                     muted
                     loop
@@ -449,7 +592,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
                 ) : (
                   <img src={villa.images?.[0] || 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&q=80&w=800'} alt={villa.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 )}
-                <div className="glass-badge glass-badge--violet" style={{ position: 'absolute', top: '16px', left: '16px', fontSize: '0.75rem' }}>
+                <div className="glass-badge glass-badge--violet" style={{ position: 'absolute', top: '16px', left: '16px', fontSize: '0.75rem', color: '#1a1a1a', fontWeight: 800 }}>
                   <span className="glass-badge__dot"></span> ERY {villa.ery}%
                 </div>
                 <div className="glass-badge glass-badge--aqua" style={{ position: 'absolute', bottom: '16px', right: '16px', fontSize: '0.75rem', background: 'var(--accent-aqua)', color: '#000', border: 'none' }}>
@@ -489,8 +632,8 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
                   <div style={{ background: 'var(--surface-muted)', padding: '12px', borderRadius: '16px', border: '1px solid var(--card-border)' }}>
-                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '4px' }}>ANNUAL YIELD (ARY)</div>
-                    <div style={{ fontSize: '1rem', fontWeight: 800, color: '#9945FF' }}>{villa.ary}%</div>
+                    <div style={{ fontSize: '0.65rem', color: '#1a1a1a', marginBottom: '4px', fontWeight: 800 }}>ANNUAL YIELD (ARY)</div>
+                    <div style={{ fontSize: '1rem', fontWeight: 800, color: '#1a1a1a' }}>{villa.ary}%</div>
                   </div>
                   <div style={{ background: 'var(--surface-muted)', padding: '12px', borderRadius: '16px', border: '1px solid var(--card-border)' }}>
                     <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '4px' }}>STATUS</div>
@@ -607,8 +750,8 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#14f195', marginTop: '20px', paddingTop: '12px', borderTop: '1px solid var(--card-border)' }}>
-                        <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>Est. Annual Yield</span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#1a1a1a', marginTop: '20px', paddingTop: '12px', borderTop: '1px solid var(--card-border)' }}>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>Est. Annual Yield (ERY)</span>
                         <span style={{ fontWeight: 900, fontSize: '1.1rem' }}>+ {(investAmount * (100 / solPriceUsd) * (parseFloat(selectedVilla.ery) / 100)).toFixed(4)} SOL</span>
                       </div>
                     </div>
