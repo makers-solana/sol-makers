@@ -302,17 +302,17 @@ export default function ERPDashboard() {
                 padding: '12px 14px',
                 borderRadius: '999px'
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingLeft: '6px', cursor: 'pointer' }} onClick={() => window.location.href = 'http://localhost:3000/'}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingLeft: '6px', cursor: 'pointer' }} onClick={() => window.location.href = 'https://thehistorymaker.io/'}>
                     <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #fff, #7c5cff)', boxShadow: '0 0 0 6px rgba(124, 92, 255, 0.12)' }}></div>
                     <span style={{ fontWeight: 800, letterSpacing: '0.02em', color: 'var(--spotify-white)' }}>Makers</span>
                     <span style={{ marginLeft: '8px', padding: '6px 10px', borderRadius: '999px', border: '1px solid var(--border)', background: 'rgba(255, 255, 255, 0.04)', color: 'var(--spotify-gray-lighter)', fontSize: '12px' }}>Asset & Earning</span>
                 </div>
 
                 <nav className="glass-nav header-nav-desktop" aria-label="Main navigation" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <a href="http://localhost:3000/" className="glass-btn glass-btn--ghost glass-btn--sm" style={{ padding: '9px 12px' }}>Home</a>
-                    <a href="http://localhost:3000/marketplace" className="glass-btn glass-btn--ghost glass-btn--sm" style={{ padding: '9px 12px' }}>Marketplace</a>
+                    <a href="https://thehistorymaker.io/" className="glass-btn glass-btn--ghost glass-btn--sm" style={{ padding: '9px 12px' }}>Home</a>
+                    <a href="https://thehistorymaker.io/marketplace" className="glass-btn glass-btn--ghost glass-btn--sm" style={{ padding: '9px 12px' }}>Marketplace</a>
                     <a href="#" className="glass-btn glass-btn--primary glass-btn--sm" style={{ padding: '9px 12px' }}>Asset & Earning</a>
-                    <a href="http://localhost:3000/about" className="glass-btn glass-btn--ghost glass-btn--sm" style={{ padding: '9px 12px' }}>About Us</a>
+                    <a href="https://docs.thehistorymaker.io/" target="_blank" rel="noopener noreferrer" className="glass-btn glass-btn--ghost glass-btn--sm" style={{ padding: '9px 12px' }}>About Us</a>
                 </nav>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
@@ -360,8 +360,8 @@ export default function ERPDashboard() {
             }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255, 255, 255, 0.4)', letterSpacing: '0.1em' }}>NAVIGATION</span>
-                    <a href="http://localhost:3000/" style={{ color: 'white', textDecoration: 'none', fontSize: '1.25rem', fontWeight: 700 }}>Home</a>
-                    <a href="http://localhost:3000/marketplace" style={{ color: 'white', textDecoration: 'none', fontSize: '1.25rem', fontWeight: 700 }}>Marketplace</a>
+                    <a href="https://thehistorymaker.io/" style={{ color: 'white', textDecoration: 'none', fontSize: '1.25rem', fontWeight: 700 }}>Home</a>
+                    <a href="https://thehistorymaker.io/marketplace" style={{ color: 'white', textDecoration: 'none', fontSize: '1.25rem', fontWeight: 700 }}>Marketplace</a>
                     <a href="#" onClick={(e) => { e.preventDefault(); setIsMobileMenuOpen(false); }} style={{ color: 'var(--spotify-green)', textDecoration: 'none', fontSize: '1.25rem', fontWeight: 700 }}>Asset & Earning</a>
                 </div>
 

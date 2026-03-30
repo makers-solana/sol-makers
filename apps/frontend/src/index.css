@@ -195,7 +195,8 @@ body {
   border: 1px solid var(--glass-border);
   box-shadow: var(--shadow-glass);
   position: relative;
-  overflow: hidden;
+  /* Do NOT set overflow:hidden here — it clips wallet adapter dropdowns rendered inside nav */
+  overflow: visible;
 }
 
 .glass::before {
@@ -206,7 +207,38 @@ body {
   pointer-events: none;
   border-radius: inherit;
   z-index: 1;
+  /* Clip only the reflection pseudo-element, not the parent */
+  overflow: hidden;
 }
+
+/* ─────────────────────────────────────────────
+   Solana Wallet Adapter — z-index overrides
+   Ensure the dropdown & modal always appear
+   above the navbar (z-100) and mobile drawer (z-2000).
+───────────────────────────────────────────── */
+
+/* Dropdown list (copy/change/disconnect) */
+.wallet-adapter-dropdown-list {
+  z-index: 9999 !important;
+}
+
+/* Dropdown wrapper */
+.wallet-adapter-dropdown {
+  z-index: 9998 !important;
+  position: relative;
+}
+
+/* Full-screen modal (wallet selection) */
+.wallet-adapter-modal-wrapper,
+.wallet-adapter-modal {
+  z-index: 9999 !important;
+}
+
+/* Modal overlay backdrop */
+.wallet-adapter-modal-overlay {
+  z-index: 9998 !important;
+}
+
 
 /* Buttons */
 .glass-btn {

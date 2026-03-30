@@ -8,6 +8,20 @@ const SOLANA_RPC = "https://api.devnet.solana.com";
 const connection = new Connection(SOLANA_RPC);
 const TREASURY_WALLET_ADDRESS = '41MLp5oX9yYwNoMCcQUw9ZRZQazEacU5JThrGv6E5wMU';
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': 'https://thehistorymaker.io',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
+  'Access-Control-Allow-Headers': 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization',
+  'Access-Control-Allow-Credentials': 'true',
+};
+
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 204,
+    headers: corsHeaders
+  });
+}
+
 const REAL_NFT_ADDRESSES = {
   v1: 'BxUy8Xyj4ZXJsc6m6HdqPNQT9UY35dbUM4bLMVHCBZoS',
   v2: 'd4Qqt3UzxcQBhqpRBZcQzknokCiGA82RRMzzwXBPYUg',
@@ -24,15 +38,21 @@ async function fetchTokenSupply(mintAddress: string) {
     try {
       const treasuryPubkey = new PublicKey(TREASURY_WALLET_ADDRESS);
       const tokenAccounts = await connection.getTokenAccountsByOwner(treasuryPubkey, { mint: mintPubkey });
-      
-      let treasuryBalance = 0;
-      if (tokenAccounts.value.length > 0) {
-        const balanceRecord = await connection.getTokenAccountBalance(tokenAccounts.value[0].pubkey);
-        treasuryBalance = balanceRecord.value.uiAmount || 0;
+
+      // If treasury has NO token account for this mint, no transfers have occurred yet —
+      // treasury implicitly holds the full supply, so nothing has been sold.
+      if (tokenAccounts.value.length === 0) {
+        return 0;
       }
+
+      const balanceRecord = await connection.getTokenAccountBalance(tokenAccounts.value[0].pubkey);
+      const treasuryBalance = balanceRecord.value.uiAmount || 0;
+
+      // sold = tokens minted − tokens still held by treasury
       return Math.max(0, totalSupply - treasuryBalance);
     } catch (balErr) {
-      return totalSupply;
+      console.warn(`Could not fetch treasury balance for ${mintAddress}, defaulting to 0 sold:`, balErr);
+      return 0;
     }
   } catch (e) {
     console.error(`Failed to fetch supply for ${mintAddress}:`, e);
@@ -73,8 +93,7 @@ export async function GET() {
         erp: {
           occupancy: v.occupancyStatus,
           nightlyRate: v.nightlyRate,
-          ery: `${v.ery}%`,
-          ary: `${v.ary}%`,
+          apy: '0.0044%',
           totalTokens: 40000,
           tokensSold: liveTokensSold,
           nextPayout: '2024-04-10',
@@ -90,10 +109,10 @@ export async function GET() {
       };
     }));
 
-    return NextResponse.json(formattedVillas);
+    return NextResponse.json(formattedVillas, { headers: corsHeaders });
   } catch (error) {
     console.error('Error fetching villas:', error);
-    return NextResponse.json({ error: 'Failed to fetch' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch' }, { status: 500, headers: corsHeaders });
   }
 }
 
@@ -120,9 +139,9 @@ export async function POST(req: Request) {
         ary: data.ary || 0,
       }
     });
-    return NextResponse.json(villa);
+    return NextResponse.json(villa, { headers: corsHeaders });
   } catch (error) {
     console.error('Error creating villa:', error);
-    return NextResponse.json({ error: 'Failed to create' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to create' }, { status: 500, headers: corsHeaders });
   }
 }

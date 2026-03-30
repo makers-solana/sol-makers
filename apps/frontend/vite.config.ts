@@ -7,8 +7,9 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
+    allowedHosts: ['thehistorymaker.io', 'www.thehistorymaker.io', '202.10.47.154'],
     hmr: {
-      host: 'localhost',
+      host: 'thehistorymaker.io',
     },
   },
   define: {

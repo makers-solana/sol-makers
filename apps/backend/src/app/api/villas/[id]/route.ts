@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient, Role } from '@prisma/client';
-import { checkRole } from '../../../lib/auth';
+import { checkRole } from '../../../../lib/auth';
 
 const prisma = new PrismaClient();
 

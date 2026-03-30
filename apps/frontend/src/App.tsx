@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import Dashboard from './Dashboard'
 import Home from './Home'
+import AboutUs from './AboutUs'
 
 function App() {
   const [path, setPath] = useState(window.location.pathname);
@@ -36,14 +37,11 @@ function App() {
       component = <Dashboard onNavigate={handleNavigate} />;
       break;
     case '/asset-earning':
-      // Currently redirects to localhost:3001 or shows a placeholder
-      // For now, let's keep Dashboard but maybe add a notice? 
-      // Actually, user wants "page slug". Let's show Home for these but with different focus?
-      // No, let's just render Home for now as it contains the "About" info.
+      // Redirects to production API domain (https://api.thehistorymaker.io)
       component = <Home onNavigate={handleNavigate} />;
       break;
     case '/about':
-      component = <Home onNavigate={handleNavigate} />;
+      component = <AboutUs onNavigate={handleNavigate} />;
       break;
     default:
       component = <Home onNavigate={handleNavigate} />;

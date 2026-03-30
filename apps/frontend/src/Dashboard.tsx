@@ -38,7 +38,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
   const [isLoading, setIsLoading] = useState(true);
   const [claimConditionError, setClaimConditionError] = useState<string | null>(null);
   const [solPriceUsd, setSolPriceUsd] = useState<number>(150);
-  const [idrRate, setIdrRate] = useState<number>(15500 * 150);
+
   const [referralAddress, setReferralAddress] = useState<string>('');
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -84,17 +84,25 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
 
   const fetchSolPrice = async () => {
     try {
-      const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd,idr');
-      const data = await response.json();
-      if (data.solana && data.solana.usd) {
-        setSolPriceUsd(data.solana.usd);
-        setIdrRate(data.solana.idr);
+      const response = await fetch('https://api.freecryptoapi.com/v1/getData?symbol=SOL', {
+        headers: {
+          'Authorization': 'Bearer qfb2dddbggnatwgo72bd'
+        }
+      });
+      const json = await response.json();
+      if (json.status === 'success' && json.symbols && json.symbols.length > 0) {
+        const usdPrice = parseFloat(json.symbols[0].last);
+        setSolPriceUsd(usdPrice);
+
       } else {
         throw new Error("Invalid price data");
       }
     } catch (e) {
       console.error("Failed to fetch SOL price, using fallback", e);
-      if (solPriceUsd === 0) setSolPriceUsd(150);
+      if (solPriceUsd === 0) {
+        setSolPriceUsd(150);
+
+      }
     }
   };
 
@@ -115,17 +123,20 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
         const treasuryPubkey = new PublicKey(TREASURY_WALLET_ADDRESS);
         const tokenAccounts = await connection.getTokenAccountsByOwner(treasuryPubkey, { mint: mintPubkey });
 
-        let treasuryBalance = 0;
-        if (tokenAccounts.value.length > 0) {
-          const balanceRecord = await connection.getTokenAccountBalance(tokenAccounts.value[0].pubkey);
-          treasuryBalance = balanceRecord.value.uiAmount || 0;
+        // If treasury has NO token account for this mint, it means no transfers have
+        // occurred yet — treasury implicitly holds the full supply, so nothing is sold.
+        if (tokenAccounts.value.length === 0) {
+          return 0;
         }
 
-        const sold = Math.max(0, totalSupply - treasuryBalance);
-        return sold;
+        const balanceRecord = await connection.getTokenAccountBalance(tokenAccounts.value[0].pubkey);
+        const treasuryBalance = balanceRecord.value.uiAmount || 0;
+
+        // sold = tokens minted − tokens still held by treasury
+        return Math.max(0, totalSupply - treasuryBalance);
       } catch (balErr) {
-        console.warn(`Could not fetch treasury balance for ${mintAddress}, returning total supply:`, balErr);
-        return totalSupply;
+        console.warn(`Could not fetch treasury balance for ${mintAddress}, defaulting to 0 sold:`, balErr);
+        return 0;
       }
     } catch (e) {
       console.error(`Failed to fetch supply for ${mintAddress}:`, e);
@@ -136,7 +147,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
   const fetchVillas = async () => {
     try {
       setIsLoading(true);
-      
+
       const NFT_ADDRESSES: Record<SolanaNetwork, Record<string, string>> = {
         devnet: {
           v1: 'BxUy8Xyj4ZXJsc6m6HdqPNQT9UY35dbUM4bLMVHCBZoS',
@@ -145,10 +156,10 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
           v4: '5uNBRRYNEux1GovaiRrgaGJAHRUBp8hXQqNMdkFgFVf8',
         },
         mainnet: {
-          v1: '',
-          v2: '',
-          v3: '',
-          v4: '',
+          v1: 'AUsosPL4ymUkqzisoUAMAqKj2VMGhduBhsS3ZnS7VXEy',
+          v2: 'HXnYCPQWz1eHV8ipEKNYZSqkW84fA9EYkD9HrWDfbwQJ',
+          v3: 'BNGXwuS1Wg6SG9Dpai8pgCXUXbYJAvyFiHEg8y4WKhMT',
+          v4: '43riPPJd8QwqRjbhJZKewMjbc4iKhnTGJR9Magk1BqKG',
         }
       };
 
@@ -165,22 +176,21 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
       };
 
       const backendVillas = [];
-      
+
       if (currentAddresses.v1) {
         const v1Sold = await getSafeSupply(currentAddresses.v1);
         backendVillas.push({
           id: 'v1',
-          name: 'Uluwatu Cliffside Villa',
+          name: 'Uluwatu Villa 1',
           location: 'Uluwatu, Bali',
           nftAddress: currentAddresses.v1,
           pricePerShareUsd: 100,
-          ery: '12.5',
-          ary: '12.5',
+          apy: '0.0044',
           totalTokens: 40000,
           tokensSold: v1Sold,
-          bedrooms: 4,
-          bathrooms: 4,
-          sqm: 850,
+          bedrooms: 2,
+          bathrooms: 2,
+          sqm: 131,
           occupancyStatus: 'Active',
           images: ['/assets/Villa 1.gif.mp4'],
           description: 'Premium fractionalized modern cliffside villa in Uluwatu, Bali. 40,000 shares available.',
@@ -189,67 +199,64 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
       }
 
       if (currentAddresses.v2) {
-        await delay(200);
+        await delay(1200);
         const v2Sold = await getSafeSupply(currentAddresses.v2);
         backendVillas.push({
           id: 'v2',
-          name: 'Ubud Jungle Retreat',
-          location: 'Ubud, Bali',
+          name: 'Uluwatu Villa 2',
+          location: 'Uluwatu, Bali',
           nftAddress: currentAddresses.v2,
           pricePerShareUsd: 100,
-          ery: '9.2',
-          ary: '9.2',
+          apy: '0.0044',
           totalTokens: 40000,
           tokensSold: v2Sold,
-          bedrooms: 3,
-          bathrooms: 3,
-          sqm: 450,
+          bedrooms: 2,
+          bathrooms: 2,
+          sqm: 131,
           occupancyStatus: 'Active',
           images: ['/assets/Villa 2.gif.mp4'],
-          description: 'Luxury tropical jungle villa in Ubud, surrounded by palm trees. 40,000 shares available.',
+          description: 'Luxury tropical villa Uluwatu, surrounded by palm trees. 40,000 shares available.',
           chain: 'solana'
         });
       }
 
       if (currentAddresses.v3) {
-        await delay(200);
+        await delay(1200);
         const v3Sold = await getSafeSupply(currentAddresses.v3);
         backendVillas.push({
           id: 'v3',
-          name: 'Seminyak Beachfront Villa',
-          location: 'Seminyak, Bali',
+          name: 'Uluwatu Villa 3',
+          location: 'Uluwatu, Bali',
           nftAddress: currentAddresses.v3,
           pricePerShareUsd: 100,
-          ery: '14.0',
-          ary: '14.0',
+          apy: '0.0044',
           totalTokens: 40000,
           tokensSold: v3Sold,
-          bedrooms: 5,
-          bathrooms: 5,
-          sqm: 1200,
+          bedrooms: 2,
+          bathrooms: 2,
+          sqm: 131,
           occupancyStatus: 'Active',
           images: ['/assets/Villa 3.gif.mp4'],
-          description: 'Exclusive luxury beachfront villa in Seminyak, perfect for sunset views. 40,000 shares available.',
+          description: 'Exclusive luxury Uluwatu, perfect for sunset views. 40,000 shares available.',
           chain: 'solana'
         });
       }
 
       if (currentAddresses.v4) {
-        await delay(200);
+        await delay(1200);
         const v4Sold = await getSafeSupply(currentAddresses.v4);
         backendVillas.push({
           id: 'v4',
-          name: 'Canggu Eco Villa',
-          location: 'Canggu, Bali',
+          name: 'Uluwatu Villa 4',
+          location: 'Uluwatu, Bali',
           nftAddress: currentAddresses.v4,
           pricePerShareUsd: 100,
-          ery: '11.0',
-          ary: '11.0',
+          apy: '0.0044',
           totalTokens: 40000,
           tokensSold: v4Sold,
-          bedrooms: 3,
-          bathrooms: 3,
-          sqm: 400,
+          bedrooms: 2,
+          bathrooms: 2,
+          sqm: 131,
           occupancyStatus: 'Active',
           images: ['/assets/Villa 4.gif.mp4'],
           description: 'Minimalist eco-friendly villa with stunning rice terrace views in Canggu. 40,000 shares available.',
@@ -267,7 +274,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
   };
 
   const calculateReturn = (villa: any) => {
-    const yieldRate = parseFloat(villa.ery) / 100;
+    const yieldRate = parseFloat(villa.apy) / 100;   // villa objects use .apy, not .ery
     const pricePerShareSol = 100 / solPriceUsd;
     return `${(investAmount * pricePerShareSol * yieldRate).toLocaleString(undefined, { maximumFractionDigits: 4 })} SOL`;
   };
@@ -278,55 +285,57 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
       return;
     }
 
-    try {
-      console.log("Starting Solana Transaction with $100 peg and Referral Split...");
+    // Must have selected a villa to buy
+    if (!selectedVilla || !selectedVilla.nftAddress) {
+      alert("Please select a valid villa package to invest in.");
+      return;
+    }
 
+    try {
+      console.log("Requesting Smart Transaction Builder from Backend...");
+      
       const pricePerShareSol = 100 / solPriceUsd;
       const totalLamports = Math.floor(investAmount * pricePerShareSol * 1e9);
-      const sellerPubkey = new PublicKey(TREASURY_WALLET_ADDRESS);
+      const isReferralValid = referralAddress && referralAddress.length > 20;
 
-      const transaction = new Transaction();
+      const payload = {
+        buyerAddress: publicKey.toBase58(),
+        mintAddress: selectedVilla.nftAddress,
+        amountTokens: investAmount,
+        totalLamports: totalLamports,
+        referralAddress: isReferralValid ? referralAddress : null,
+        referralLamports: isReferralValid ? Math.floor(totalLamports * 0.1) : 0,
+        network: network
+      };
 
-      if (referralAddress && referralAddress.length > 20) {
-        try {
-          const referralPubkey = new PublicKey(referralAddress);
-          const referralLamports = Math.floor(totalLamports * 0.1);
-          const sellerLamports = totalLamports - referralLamports;
+      // Call the newly created Next.js backend endpoint 
+      const response = await fetch('https://api.thehistorymaker.io/api/solana/build-tx', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
 
-          transaction.add(
-            SystemProgram.transfer({
-              fromPubkey: publicKey,
-              toPubkey: sellerPubkey,
-              lamports: sellerLamports,
-            }),
-            SystemProgram.transfer({
-              fromPubkey: publicKey,
-              toPubkey: referralPubkey,
-              lamports: referralLamports,
-            })
-          );
-          console.log(`Split transaction: 90% logic engaged. 10% to ${referralAddress}`);
-        } catch (e) {
-          console.warn("Invalid referral address, sending 100% to seller");
-          transaction.add(
-            SystemProgram.transfer({
-              fromPubkey: publicKey,
-              toPubkey: sellerPubkey,
-              lamports: totalLamports,
-            })
-          );
-        }
-      } else {
-        transaction.add(
-          SystemProgram.transfer({
-            fromPubkey: publicKey,
-            toPubkey: sellerPubkey,
-            lamports: totalLamports,
-          })
-        );
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to build transaction on server');
       }
 
+      // Safely decode Base64 string to Uint8Array for browser compat
+      const binaryString = atob(data.transaction);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) { 
+        bytes[i] = binaryString.charCodeAt(i); 
+      }
+      
+      // Reconstruct partially signed transaction from server
+      const transaction = Transaction.from(bytes);
+
+      // Prompt Phantom to sign and send the transaction
+      console.log("Prompting user to finalize and send Smart Transaction...");
       const signature = await sendTransaction(transaction, connection);
+      
       console.log("Solana Transaction Signature:", signature);
       alert(`Transaction sent! Signature: ${signature}`);
 
@@ -402,19 +411,19 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
         <nav className="glass-nav" aria-label="Main navigation" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <a href="/" onClick={(e) => { e.preventDefault(); onNavigate?.('home'); }} className="glass-btn glass-btn--ghost glass-btn--sm" style={{ padding: '9px 12px' }}>Home</a>
           <a href="/marketplace" onClick={(e) => { e.preventDefault(); onNavigate?.('marketplace'); }} className="glass-btn glass-btn--primary glass-btn--sm" style={{ padding: '9px 12px' }}>Marketplace</a>
-          <a href={solanaConnected && wallet?.adapter.name ? `http://localhost:3001/?wallet=${encodeURIComponent(wallet.adapter.name)}` : "http://localhost:3001/"} className="glass-btn glass-btn--ghost glass-btn--sm" style={{ padding: '9px 12px' }}>Asset & Earning</a>
-          <a href="/about" onClick={(e) => { e.preventDefault(); onNavigate?.('about'); }} className="glass-btn glass-btn--ghost glass-btn--sm" style={{ padding: '9px 12px' }}>About Us</a>
+          <a href={solanaConnected && wallet?.adapter.name ? `https://api.thehistorymaker.io/?wallet=${encodeURIComponent(wallet.adapter.name)}` : "https://api.thehistorymaker.io/"} className="glass-btn glass-btn--ghost glass-btn--sm" style={{ padding: '9px 12px' }}>Asset & Earning</a>
+          <a href="https://docs.thehistorymaker.io/" target="_blank" rel="noopener noreferrer" className="glass-btn glass-btn--ghost glass-btn--sm" style={{ padding: '9px 12px' }}>About Us</a>
         </nav>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           {/* Mobile Hamburger Toggle */}
-          <button 
+          <button
             className="mobile-menu-toggle"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            style={{ 
-              display: 'none', 
-              background: 'var(--surface-muted)', 
-              border: '1px solid var(--card-border)', 
+            style={{
+              display: 'none',
+              background: 'var(--surface-muted)',
+              border: '1px solid var(--card-border)',
               color: 'var(--text-color)',
               padding: '10px',
               borderRadius: '12px',
@@ -528,17 +537,17 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
           <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.1em' }}>NAVIGATION</span>
           <a href="/" style={{ color: 'var(--text-color)', textDecoration: 'none', fontSize: '1.25rem', fontWeight: 700 }}>Home</a>
           <a href="#" style={{ color: '#9945FF', textDecoration: 'none', fontSize: '1.25rem', fontWeight: 700 }}>Marketplace</a>
-          <a href={solanaConnected && wallet?.adapter.name ? `http://localhost:3001/?wallet=${encodeURIComponent(wallet.adapter.name)}` : "http://localhost:3001/"} style={{ color: 'var(--text-color)', textDecoration: 'none', fontSize: '1.25rem', fontWeight: 700 }}>Asset & Earning</a>
+          <a href={solanaConnected && wallet?.adapter.name ? `https://api.thehistorymaker.io/?wallet=${encodeURIComponent(wallet.adapter.name)}` : "https://api.thehistorymaker.io/"} style={{ color: 'var(--text-color)', textDecoration: 'none', fontSize: '1.25rem', fontWeight: 700 }}>Asset & Earning</a>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.1em' }}>NETWORK</span>
           <div style={{ display: 'flex', backgroundColor: 'var(--card-border)', padding: '4px', borderRadius: '16px', width: 'fit-content' }}>
-            <button 
+            <button
               onClick={() => { setNetwork('devnet'); setIsMobileMenuOpen(false); }}
               style={{ padding: '8px 16px', borderRadius: '12px', border: 'none', background: network === 'devnet' ? 'linear-gradient(90deg, #9945FF, #14F195)' : 'transparent', color: network === 'devnet' ? 'white' : 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800 }}
             >DEVNET</button>
-            <button 
+            <button
               onClick={() => { setNetwork('mainnet'); setIsMobileMenuOpen(false); }}
               style={{ padding: '8px 16px', borderRadius: '12px', border: 'none', background: network === 'mainnet' ? 'linear-gradient(90deg, #14F195, #9945FF)' : 'transparent', color: network === 'mainnet' ? 'white' : 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800 }}
             >MAINNET</button>
@@ -562,7 +571,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
 
       {/* Overlay for Mobile Menu */}
       {isMobileMenuOpen && (
-        <div 
+        <div
           onClick={() => setIsMobileMenuOpen(false)}
           style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 1500 }}
         />
@@ -593,7 +602,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
                   <img src={villa.images?.[0] || 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&q=80&w=800'} alt={villa.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 )}
                 <div className="glass-badge glass-badge--violet" style={{ position: 'absolute', top: '16px', left: '16px', fontSize: '0.75rem', color: '#1a1a1a', fontWeight: 800 }}>
-                  <span className="glass-badge__dot"></span> ERY {villa.ery}%
+                  <span className="glass-badge__dot"></span> APY {villa.apy}%
                 </div>
                 <div className="glass-badge glass-badge--aqua" style={{ position: 'absolute', bottom: '16px', right: '16px', fontSize: '0.75rem', background: 'var(--accent-aqua)', color: '#000', border: 'none' }}>
                   {villa.chain === 'solana' ? `◎ ${(100 / solPriceUsd).toFixed(3)} / NFT` : `$${villa.pricePerShare} / token`}
@@ -632,8 +641,8 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
                   <div style={{ background: 'var(--surface-muted)', padding: '12px', borderRadius: '16px', border: '1px solid var(--card-border)' }}>
-                    <div style={{ fontSize: '0.65rem', color: '#1a1a1a', marginBottom: '4px', fontWeight: 800 }}>ANNUAL YIELD (ARY)</div>
-                    <div style={{ fontSize: '1rem', fontWeight: 800, color: '#1a1a1a' }}>{villa.ary}%</div>
+                    <div style={{ fontSize: '0.65rem', color: '#ffffff', marginBottom: '4px', fontWeight: 800 }}>APY</div>
+                    <div style={{ fontSize: '1rem', fontWeight: 800, color: '#ffffff' }}>{villa.apy}%</div>
                   </div>
                   <div style={{ background: 'var(--surface-muted)', padding: '12px', borderRadius: '16px', border: '1px solid var(--card-border)' }}>
                     <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '4px' }}>STATUS</div>
@@ -733,10 +742,6 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
                           <span>Est. USD Cost</span>
                           <span>${(investAmount * 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                          <span>Est. Rupiah (IDR)</span>
-                          <span>Rp {(investAmount * 100 * (idrRate / solPriceUsd || 15500)).toLocaleString('id-ID', { maximumFractionDigits: 0 })}</span>
-                        </div>
 
                         <div style={{ marginBottom: '24px' }}>
                           <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 800, marginBottom: '8px' }}>REFERRAL WALLET ADDRESS (OPTIONAL)</label>
@@ -750,11 +755,49 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#1a1a1a', marginTop: '20px', paddingTop: '12px', borderTop: '1px solid var(--card-border)' }}>
-                        <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>Est. Annual Yield (ERY)</span>
-                        <span style={{ fontWeight: 900, fontSize: '1.1rem' }}>+ {(investAmount * (100 / solPriceUsd) * (parseFloat(selectedVilla.ery) / 100)).toFixed(4)} SOL</span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ffffff', marginTop: '20px', paddingTop: '12px', borderTop: '1px solid var(--card-border)' }}>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>Est. Annual Yield (APY)</span>
+                        <span style={{ fontWeight: 900, fontSize: '1.1rem' }}>+ {(investAmount * (100 / solPriceUsd) * (parseFloat(selectedVilla.apy) / 100)).toFixed(4)} SOL</span>
                       </div>
                     </div>
+
+                    {/* Affiliate / Referral Section */}
+                    {publicKey && (
+                      <div style={{ marginBottom: '24px', background: 'linear-gradient(145deg, rgba(153,69,255,0.1) 0%, rgba(20,241,149,0.05) 100%)', borderRadius: '20px', padding: '20px', border: '1px solid rgba(153,69,255,0.3)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                          <div>
+                            <h4 style={{ fontSize: '1rem', color: 'var(--accent-violet)', margin: '0 0 6px 0', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <TrendingUp size={18} /> Affiliate Program
+                            </h4>
+                            <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                              Invite investors to this asset and automatically earn a <strong style={{ color: 'var(--accent-aqua)' }}>10% split</strong> directly to your wallet upon successful transaction.
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={copyReferralLink}
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            borderRadius: '12px',
+                            background: 'rgba(153,69,255,0.2)',
+                            color: 'var(--accent-violet)',
+                            fontWeight: 800,
+                            fontSize: '0.9rem',
+                            border: '1px dashed rgba(153,69,255,0.5)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            gap: '8px',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          <Globe size={16} /> Generate & Copy My Referral Link
+                        </button>
+                      </div>
+                    )}
+
 
                     <div style={{ marginBottom: '24px' }}>
                       <h4 style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '16px', fontWeight: 800 }}>INSTANT ASSET ACQUISITION</h4>
