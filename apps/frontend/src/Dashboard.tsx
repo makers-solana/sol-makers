@@ -26,8 +26,7 @@ const solanaDevnet = defineChain({
   blockExplorers: [{ name: "Solana Explorer", url: "https://explorer.solana.com/?cluster=devnet" }],
 });
 
-// Treasury Wallet Address (Multisig Squads)
-const TREASURY_WALLET_ADDRESS = '41MLp5oX9yYwNoMCcQUw9ZRZQazEacU5JThrGv6E5wMU';
+// Treasury Wallet Address replaced dynamically inside component
 
 export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const { network, setNetwork } = useNetwork();
@@ -120,7 +119,12 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
       const totalSupply = supplyInfo.value.uiAmount || 0;
 
       try {
-        const treasuryPubkey = new PublicKey(TREASURY_WALLET_ADDRESS);
+        const NETWORK_TREASURIES: Record<string, string> = {
+          devnet: '8bw4qgyQnChaa91hxUViB8gMLjmC39UvFsPMydwRmUN8',
+          mainnet: 'EUWDRpaq8yc5X7paoA7GMfLieL8qUfB3MTm744v7kTim'
+        };
+        const treasuryAddress = NETWORK_TREASURIES[network] || NETWORK_TREASURIES.mainnet;
+        const treasuryPubkey = new PublicKey(treasuryAddress);
         const tokenAccounts = await connection.getTokenAccountsByOwner(treasuryPubkey, { mint: mintPubkey });
 
         // If treasury has NO token account for this mint, it means no transfers have
@@ -181,7 +185,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
         const v1Sold = await getSafeSupply(currentAddresses.v1);
         backendVillas.push({
           id: 'v1',
-          name: 'Uluwatu Villa 1',
+          name: 'Uluwatu Cliffside Villa',
           location: 'Uluwatu, Bali',
           nftAddress: currentAddresses.v1,
           pricePerShareUsd: 100,
@@ -203,7 +207,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
         const v2Sold = await getSafeSupply(currentAddresses.v2);
         backendVillas.push({
           id: 'v2',
-          name: 'Uluwatu Villa 2',
+          name: 'The Ubud Jungle Sanctuary',
           location: 'Uluwatu, Bali',
           nftAddress: currentAddresses.v2,
           pricePerShareUsd: 100,
@@ -225,7 +229,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
         const v3Sold = await getSafeSupply(currentAddresses.v3);
         backendVillas.push({
           id: 'v3',
-          name: 'Uluwatu Villa 3',
+          name: 'Seminyak Beachfront Villa',
           location: 'Uluwatu, Bali',
           nftAddress: currentAddresses.v3,
           pricePerShareUsd: 100,
@@ -247,7 +251,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
         const v4Sold = await getSafeSupply(currentAddresses.v4);
         backendVillas.push({
           id: 'v4',
-          name: 'Uluwatu Villa 4',
+          name: 'Canggu Eco Villa',
           location: 'Uluwatu, Bali',
           nftAddress: currentAddresses.v4,
           pricePerShareUsd: 100,

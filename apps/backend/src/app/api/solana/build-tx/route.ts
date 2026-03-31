@@ -3,7 +3,7 @@ import { Connection, PublicKey, Transaction, SystemProgram, Keypair } from '@sol
 import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountIdempotentInstruction } from '@solana/spl-token';
 import bs58 from 'bs58';
 
-const TREASURY_WALLET_ADDRESS = new PublicKey('41MLp5oX9yYwNoMCcQUw9ZRZQazEacU5JThrGv6E5wMU');
+
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': 'https://thehistorymaker.io',
@@ -60,10 +60,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid treasury key format in server config' }, { status: 500, headers: corsHeaders });
     }
 
-    // Verify derived pubkey matches predefined Treasury
-    if (treasuryKeypair.publicKey.toBase58() !== TREASURY_WALLET_ADDRESS.toBase58()) {
-      console.warn(`Warning: Env key (${treasuryKeypair.publicKey.toBase58()}) does not match UI treasury (${TREASURY_WALLET_ADDRESS.toBase58()}). Using env key for signatures and destinations.`);
-    }
+
 
     // Always use the keypair's public key as the true treasury destination
     const treasuryPubkey = treasuryKeypair.publicKey;

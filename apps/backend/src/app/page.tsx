@@ -22,7 +22,8 @@ import {
     ShieldCheck,
     Settings,
     Menu,
-    X
+    X,
+    CloudLightning
 } from 'lucide-react';
 import { ConnectButton, useActiveAccount, useReadContract } from "thirdweb/react";
 import { client } from "../lib/thirdweb";
@@ -45,6 +46,86 @@ export default function ERPDashboard() {
     const [isLoading, setIsLoading] = useState(true);
     const [showListingModal, setShowListingModal] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    // Operations (Deploy NFT) state
+    const [deployNetwork, setDeployNetwork] = useState<'devnet' | 'mainnet'>('devnet');
+    const [isDeploying, setIsDeploying] = useState(false);
+    const [deployLog, setDeployLog] = useState<string[]>([]);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [filePreview, setFilePreview] = useState<string | null>(null);
+    const [deployForm, setDeployForm] = useState<any>({
+        name: '',
+        symbol: '',
+        description: '',
+        supply: 40000,
+        pricePerShare: 100,
+        totalValue: 4000000,
+        attributes: [
+            { trait_type: 'Location', value: 'Uluwatu, Bali' },
+            { trait_type: 'Bedrooms', value: '3' },
+            { trait_type: 'Bathrooms', value: '3' },
+            { trait_type: 'Land Size', value: '150 m²' },
+            { trait_type: 'Total Fractions', value: '40000' },
+            { trait_type: 'Asset Type', value: 'Villa' },
+        ],
+    });
+
+    const handleDeploy = async () => {
+        if (!publicKey) return;
+        if (!selectedFile) {
+            setDeployLog([`[${new Date().toLocaleTimeString()}] Error: Please select an image or video file first.`]);
+            return;
+        }
+        setIsDeploying(true);
+        setDeployLog([`[${new Date().toLocaleTimeString()}] Starting deployment to ${deployNetwork}...`]);
+
+        try {
+            const formData = new FormData();
+            formData.append('callerAddress', publicKey.toBase58());
+            formData.append('network', deployNetwork);
+            formData.append('name', deployForm.name);
+            formData.append('symbol', deployForm.symbol);
+            formData.append('description', deployForm.description);
+            formData.append('supply', deployForm.supply.toString());
+            formData.append('pricePerShare', deployForm.pricePerShare.toString());
+            formData.append('totalValue', deployForm.totalValue.toString());
+            formData.append('attributes', JSON.stringify(deployForm.attributes.filter((a: any) => a.trait_type && a.value)));
+            formData.append('file', selectedFile);
+
+            setDeployLog(prev => [...prev, `[${new Date().toLocaleTimeString()}] Uploading asset & metadata to Irys (Arweave)...`]);
+
+            const response = await fetch('/api/solana/deploy-nft', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Deployment failed');
+            }
+
+            setDeployLog(prev => [
+                ...prev,
+                `[${new Date().toLocaleTimeString()}] ✓ Asset stored: ${data.assetUri.slice(0, 30)}...`,
+                `[${new Date().toLocaleTimeString()}] ✓ Metadata stored: ${data.metadataUri.slice(0, 30)}...`,
+                `[${new Date().toLocaleTimeString()}] ✓ ${data.message}`,
+                `[${new Date().toLocaleTimeString()}] ✓ Mint Address: ${data.mintAddress}`,
+                `[${new Date().toLocaleTimeString()}] ✓ Network: ${data.network} | Supply: ${data.supply}`,
+            ]);
+
+            // Refresh villa list
+            fetchData();
+        } catch (error: any) {
+            setDeployLog(prev => [
+                ...prev,
+                `[${new Date().toLocaleTimeString()}] Error: ${error.message}`,
+            ]);
+        } finally {
+            setIsDeploying(false);
+        }
+    };
+
     const [referralStats, setReferralStats] = useState<any>({
         totalEarned: 0,
         totalReferrals: 0,
@@ -282,6 +363,295 @@ export default function ERPDashboard() {
         </div>
     );
 
+    const renderOperations = () => {
+        const TREASURY_ADDRESSES = [
+            'EUWDRpaq8yc5X7paoA7GMfLieL8qUfB3MTm744v7kTim',
+            '8bw4qgyQnChaa91hxUViB8gMLjmC39UvFsPMydwRmUN8',
+        ];
+
+        const isTreasury = publicKey && TREASURY_ADDRESSES.includes(publicKey.toBase58());
+
+        if (!solanaConnected || !isTreasury) {
+            return (
+                <div className="section-content animate-fadeIn">
+                    <h2 className="section-title">Operations — NFT Deployment</h2>
+                    <div style={{
+                        padding: '80px 40px',
+                        textAlign: 'center',
+                        background: 'linear-gradient(145deg, rgba(255,59,48,0.05) 0%, rgba(255,149,0,0.03) 100%)',
+                        borderRadius: '16px',
+                        border: '1px dashed rgba(255, 59, 48, 0.3)',
+                    }}>
+                        <ShieldCheck size={56} color="#ff3b30" style={{ marginBottom: '20px', opacity: 0.7 }} />
+                        <h3 style={{ color: '#ff3b30', marginBottom: '12px', fontSize: '1.3rem' }}>Access Restricted</h3>
+                        <p style={{ color: 'var(--spotify-gray-lighter)', maxWidth: '500px', margin: '0 auto 24px auto', lineHeight: '1.6' }}>
+                            This section is exclusively available to the <strong style={{ color: 'white' }}>Treasury Wallet</strong>.<br/>
+                            Please connect the authorized wallet to access NFT deployment operations.
+                        </p>
+                        {!solanaConnected && (
+                            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
+                                <WalletMultiButton />
+                            </div>
+                        )}
+                        {solanaConnected && !isTreasury && (
+                            <p style={{ fontSize: '0.8rem', color: '#ff3b30', marginTop: '12px' }}>
+                                Connected: {publicKey?.toBase58().slice(0, 8)}... — Not a Treasury wallet.
+                            </p>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        return (
+            <div className="section-content animate-fadeIn">
+                <h2 className="section-title">Operations — Deploy New NFT / SFT</h2>
+                <p style={{ color: 'var(--spotify-gray-lighter)', marginBottom: '30px', fontSize: '0.9rem' }}>
+                    Deploy a new Semi-Fungible Token (SFT) on the Solana blockchain. Fill in the metadata below.
+                </p>
+
+                {/* Network Selector */}
+                <div style={{ marginBottom: '30px' }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: 'var(--spotify-gray-lighter)', letterSpacing: '0.1em', marginBottom: '10px' }}>NETWORK</label>
+                    <div style={{ display: 'flex', backgroundColor: 'var(--spotify-gray-dark)', padding: '4px', borderRadius: '12px', width: 'fit-content' }}>
+                        <button
+                            onClick={() => setDeployNetwork('devnet')}
+                            style={{
+                                padding: '10px 24px', borderRadius: '10px', border: 'none', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
+                                background: deployNetwork === 'devnet' ? 'linear-gradient(90deg, #9945FF, #14F195)' : 'transparent',
+                                color: deployNetwork === 'devnet' ? 'white' : 'var(--spotify-gray-lighter)',
+                                transition: 'all 0.3s',
+                            }}
+                        >DEVNET</button>
+                        <button
+                            onClick={() => setDeployNetwork('mainnet')}
+                            style={{
+                                padding: '10px 24px', borderRadius: '10px', border: 'none', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
+                                background: deployNetwork === 'mainnet' ? 'linear-gradient(90deg, #14F195, #9945FF)' : 'transparent',
+                                color: deployNetwork === 'mainnet' ? 'white' : 'var(--spotify-gray-lighter)',
+                                transition: 'all 0.3s',
+                            }}
+                        >MAINNET</button>
+                    </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
+                    {/* Left Column — Core Metadata */}
+                    <div className="info-card glass glass-card" style={{ padding: '30px' }}>
+                        <h3 style={{ color: 'white', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <Database size={20} color="var(--spotify-green)" /> Token Metadata
+                        </h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                            <div>
+                                <label style={labelStyle}>NAME *</label>
+                                <input type="text" placeholder='e.g. Uluwatu Villa #5' value={deployForm.name}
+                                    onChange={e => setDeployForm({ ...deployForm, name: e.target.value })} style={inputStyle} />
+                            </div>
+                            <div>
+                                <label style={labelStyle}>SYMBOL *</label>
+                                <input type="text" placeholder='e.g. GNVLT' value={deployForm.symbol}
+                                    onChange={e => setDeployForm({ ...deployForm, symbol: e.target.value })} style={inputStyle} />
+                            </div>
+                            <div>
+                                <label style={labelStyle}>DESCRIPTION</label>
+                                <textarea placeholder='Luxury villa located in Uluwatu, Bali...' value={deployForm.description}
+                                    onChange={e => setDeployForm({ ...deployForm, description: e.target.value })}
+                                    style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }} />
+                            </div>
+                            <div>
+                                <label style={labelStyle}>UPLOAD ASSET (IMAGE/VIDEO) *</label>
+                                <div style={{ 
+                                    border: '2px dashed rgba(255,255,255,0.1)', 
+                                    borderRadius: '12px', 
+                                    padding: '20px', 
+                                    textAlign: 'center',
+                                    background: 'rgba(255,255,255,0.02)',
+                                    cursor: 'pointer',
+                                    position: 'relative'
+                                }}>
+                                    <input 
+                                        type="file" 
+                                        accept="image/png, image/jpeg, image/gif, video/mp4"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) {
+                                                if (file.size > 10 * 1024 * 1024) {
+                                                    alert("File size exceeds 10MB limit.");
+                                                    return;
+                                                }
+                                                setSelectedFile(file);
+                                                const url = URL.createObjectURL(file);
+                                                setFilePreview(url);
+                                            }
+                                        }}
+                                        style={{ 
+                                            position: 'absolute', 
+                                            inset: 0, 
+                                            opacity: 0, 
+                                            cursor: 'pointer',
+                                            width: '100%',
+                                            height: '100%'
+                                        }} 
+                                    />
+                                    {!filePreview ? (
+                                        <div style={{ color: 'var(--spotify-gray-lighter)', fontSize: '0.85rem' }}>
+                                            <Download size={24} style={{ marginBottom: '8px', opacity: 0.5 }} />
+                                            <div>Click or drag to upload</div>
+                                            <div style={{ fontSize: '0.7rem', marginTop: '4px' }}>PNG, JPG, GIF, MP4 (Max 10MB)</div>
+                                        </div>
+                                    ) : (
+                                        <div style={{ position: 'relative' }}>
+                                            {selectedFile?.type.startsWith('video') ? (
+                                                <video src={filePreview} controls style={{ maxWidth: '100%', borderRadius: '8px', maxHeight: '150px' }} />
+                                            ) : (
+                                                <img src={filePreview} style={{ maxWidth: '100%', borderRadius: '8px', maxHeight: '150px', objectFit: 'contain' }} />
+                                            )}
+                                            <div style={{ marginTop: '10px', fontSize: '0.75rem', color: 'var(--spotify-green)' }}>
+                                                {selectedFile?.name} ({(selectedFile?.size! / 1024 / 1024).toFixed(2)} MB)
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
+                                <div>
+                                    <label style={labelStyle}>TOTAL SUPPLY (FRACTIONS) *</label>
+                                    <input type="number" value={deployForm.supply}
+                                        onChange={e => setDeployForm({ ...deployForm, supply: parseInt(e.target.value) })} style={inputStyle} />
+                                </div>
+                                <div>
+                                    <label style={labelStyle}>PRICE PER SHARE (USDC/SOL) *</label>
+                                    <input type="number" value={deployForm.pricePerShare}
+                                        onChange={e => setDeployForm({ ...deployForm, pricePerShare: parseFloat(e.target.value) })} style={inputStyle} />
+                                </div>
+                                <div>
+                                    <label style={labelStyle}>TOTAL VALUE (USD) *</label>
+                                    <input type="number" value={deployForm.totalValue}
+                                        onChange={e => setDeployForm({ ...deployForm, totalValue: parseFloat(e.target.value) })} style={inputStyle} />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Right Column — Attributes */}
+                    <div className="info-card glass glass-card" style={{ padding: '30px' }}>
+                        <h3 style={{ color: 'white', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <Layers size={20} color="#9945FF" /> Attributes (Properties)
+                        </h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                            {deployForm.attributes.map((attr: any, i: number) => (
+                                <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                    <input type="text" placeholder='Trait Type' value={attr.trait_type}
+                                        onChange={e => {
+                                            const newAttrs = [...deployForm.attributes];
+                                            newAttrs[i] = { ...newAttrs[i], trait_type: e.target.value };
+                                            setDeployForm({ ...deployForm, attributes: newAttrs });
+                                        }} style={{ ...inputStyle, flex: 1 }} />
+                                    <input type="text" placeholder='Value' value={attr.value}
+                                        onChange={e => {
+                                            const newAttrs = [...deployForm.attributes];
+                                            newAttrs[i] = { ...newAttrs[i], value: e.target.value };
+                                            setDeployForm({ ...deployForm, attributes: newAttrs });
+                                        }} style={{ ...inputStyle, flex: 1 }} />
+                                    <button onClick={() => {
+                                        const newAttrs = deployForm.attributes.filter((_: any, idx: number) => idx !== i);
+                                        setDeployForm({ ...deployForm, attributes: newAttrs });
+                                    }} style={{ background: 'rgba(255,59,48,0.1)', border: '1px solid rgba(255,59,48,0.3)', color: '#ff3b30', borderRadius: '8px', padding: '8px', cursor: 'pointer' }}>
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
+                            ))}
+                            <button onClick={() => {
+                                setDeployForm({
+                                    ...deployForm,
+                                    attributes: [...deployForm.attributes, { trait_type: '', value: '' }]
+                                });
+                            }} style={{
+                                background: 'rgba(153, 69, 255, 0.1)', border: '1px dashed rgba(153, 69, 255, 0.4)',
+                                color: '#9945FF', borderRadius: '10px', padding: '10px', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                            }}>
+                                <Plus size={16} /> Add Attribute
+                            </button>
+                        </div>
+
+                        {/* JSON Preview */}
+                        <div style={{ marginTop: '24px' }}>
+                            <label style={labelStyle}>JSON PREVIEW</label>
+                            <pre style={{
+                                background: 'rgba(0,0,0,0.4)', padding: '16px', borderRadius: '10px',
+                                fontSize: '0.7rem', color: '#14F195', overflow: 'auto', maxHeight: '200px',
+                                border: '1px solid rgba(20, 241, 149, 0.1)',
+                            }}>
+                                {JSON.stringify({
+                                    name: deployForm.name, symbol: deployForm.symbol,
+                                    description: deployForm.description, image: deployForm.image,
+                                    external_url: 'https://thehistorymaker.io',
+                                    attributes: deployForm.attributes.filter((a: any) => a.trait_type),
+                                    properties: {
+                                        files: deployForm.image ? [{ uri: deployForm.image, type: 'image/png' }] : [],
+                                        category: 'image'
+                                    }
+                                }, null, 2)}
+                            </pre>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Deploy Button & Log */}
+                <div style={{ marginTop: '30px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <button
+                        onClick={handleDeploy}
+                        disabled={isDeploying}
+                        style={{
+                            width: '100%', padding: '18px', borderRadius: '14px', border: 'none', fontWeight: 900, fontSize: '1rem', cursor: isDeploying ? 'not-allowed' : 'pointer',
+                            background: isDeploying ? 'var(--spotify-gray-medium)' : 'linear-gradient(90deg, #9945FF, #14F195)',
+                            color: 'white', transition: 'all 0.3s',
+                            boxShadow: isDeploying ? 'none' : '0 4px 20px rgba(153, 69, 255, 0.3)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                        }}
+                    >
+                        {isDeploying ? (
+                            <><Activity size={20} className="spin" /> Deploying to {deployNetwork}...</>
+                        ) : (
+                            <><CloudLightning size={20} /> Deploy NFT to {deployNetwork.toUpperCase()}</>
+                        )}
+                    </button>
+
+                    {deployLog.length > 0 && (
+                        <div style={{
+                            background: 'rgba(0,0,0,0.5)', borderRadius: '12px', padding: '20px',
+                            border: '1px solid var(--spotify-gray-medium)', maxHeight: '300px', overflow: 'auto',
+                        }}>
+                            <h4 style={{ color: 'var(--spotify-green)', marginBottom: '12px', fontSize: '0.8rem', fontWeight: 800 }}>DEPLOYMENT LOG</h4>
+                            {deployLog.map((log: string, i: number) => (
+                                <div key={i} style={{
+                                    padding: '6px 0', fontSize: '0.8rem', fontFamily: 'monospace',
+                                    color: log.includes('Error') || log.includes('error') ? '#ff3b30' :
+                                           log.includes('Success') || log.includes('✓') ? '#14F195' : 'var(--spotify-gray-lighter)',
+                                    borderBottom: '1px solid rgba(255,255,255,0.03)',
+                                }}>
+                                    {log}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
+    const labelStyle: React.CSSProperties = {
+        display: 'block', fontSize: '0.7rem', fontWeight: 800,
+        color: 'var(--spotify-gray-lighter)', letterSpacing: '0.08em', marginBottom: '6px',
+    };
+    const inputStyle: React.CSSProperties = {
+        width: '100%', padding: '12px 14px', background: 'var(--spotify-gray-medium)',
+        border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', color: 'white',
+        fontSize: '0.9rem', outline: 'none', transition: 'border 0.2s',
+    };
+
+
     if (!hasMounted) return <div style={{ background: '#000', height: '100vh' }}></div>;
 
     return (
@@ -419,6 +789,7 @@ export default function ERPDashboard() {
                 <div className="content-area" style={{ paddingTop: '20px' }}>
                     {activeSection === 'dashboard' && renderDashboard()}
                     {activeSection === 'collections' && renderCollections()}
+                    {activeSection === 'minting' && renderOperations()}
                     {activeSection === 'referrals' && renderReferrals()}
                     {isLoading && <div style={{ color: 'var(--spotify-green)', textAlign: 'center', marginTop: '50px', fontWeight: 600 }}>Securing Connection to Database & Chain...</div>}
                 </div>

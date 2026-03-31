@@ -4,9 +4,9 @@ import { Connection, PublicKey } from '@solana/web3.js';
 
 const prisma = new PrismaClient();
 
-const SOLANA_RPC = "https://api.devnet.solana.com";
+const SOLANA_RPC = "https://solana-rpc.publicnode.com";
 const connection = new Connection(SOLANA_RPC);
-const TREASURY_WALLET_ADDRESS = '41MLp5oX9yYwNoMCcQUw9ZRZQazEacU5JThrGv6E5wMU';
+const TREASURY_WALLET_ADDRESS = 'EUWDRpaq8yc5X7paoA7GMfLieL8qUfB3MTm744v7kTim';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': 'https://thehistorymaker.io',
@@ -23,10 +23,10 @@ export async function OPTIONS() {
 }
 
 const REAL_NFT_ADDRESSES = {
-  v1: 'BxUy8Xyj4ZXJsc6m6HdqPNQT9UY35dbUM4bLMVHCBZoS',
-  v2: 'd4Qqt3UzxcQBhqpRBZcQzknokCiGA82RRMzzwXBPYUg',
-  v3: 'GABXPkqndQ7Fb7C2CST4pff1VkQXjcCtuvCdPpSRuQHy',
-  v4: '5uNBRRYNEux1GovaiRrgaGJAHRUBp8hXQqNMdkFgFVf8',
+  v1: '43riPPJd8QwqRjbhJZKewMjbc4iKhnTGJR9Magk1BqKG',
+  v2: 'AUsosPL4ymUkqzisoUAMAqKj2VMGhduBhsS3ZnS7VXEy',
+  v3: 'BNGXwuS1Wg6SG9Dpai8pgCXUXbYJAvyFiHEg8y4WKhMT',
+  v4: 'HXnYCPQWz1eHV8ipEKNYZSqkW84fA9EYkD9HrWDfbwQJ',
 };
 
 async function fetchTokenSupply(mintAddress: string) {

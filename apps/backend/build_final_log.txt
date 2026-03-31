@@ -1,0 +1,37 @@
+   ▲ Next.js 14.1.0
+   - Environments: .env
+
+   Creating an optimized production build ...
+(node:287710) [DEP_WEBPACK_MODULE_UPDATE_HASH] DeprecationWarning: Module.updateHash: Use new ChunkGraph API
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+   Generating static pages (0/6) ...
+   Generating static pages (1/6) 
+   Generating static pages (2/6) 
+   Generating static pages (4/6) 
+ ✓ Generating static pages (6/6) 
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    10.6 kB        95.4 kB
+├ ○ /_not-found                          887 B          85.7 kB
+├ ○ /api-docs                            349 kB          443 kB
+├ λ /api/referrals/[address]             0 B                0 B
+├ λ /api/solana/build-tx                 0 B                0 B
+├ λ /api/solana/deploy-nft               0 B                0 B
+├ λ /api/villas                          0 B                0 B
+└ λ /api/villas/[id]                     0 B                0 B
++ First Load JS shared by all            84.8 kB
+  ├ chunks/69-97529d68b688c523.js        29 kB
+  ├ chunks/fd9d1056-05c4ca6d408956b5.js  53.4 kB
+  └ other shared chunks (total)          2.41 kB
+
+
+○  (Static)   prerendered as static content
+λ  (Dynamic)  server-rendered on demand using Node.js
+

@@ -7,7 +7,7 @@ async function main() {
   await prisma.villa.deleteMany({});
   
   const v1 = await prisma.villa.upsert({
-    where: { nftAddress: 'BxUy8Xyj4ZXJsc6m6HdqPNQT9UY35dbUM4bLMVHCBZoS' },
+    where: { nftAddress: '43riPPJd8QwqRjbhJZKewMjbc4iKhnTGJR9Magk1BqKG' },
     update: {},
     create: {
       id: 'v1',
@@ -26,14 +26,14 @@ async function main() {
       ery: 12.5,
       ary: 12.5,
       legalStructure: 'FRACTIONAL_OWNERSHIP',
-      nftAddress: 'BxUy8Xyj4ZXJsc6m6HdqPNQT9UY35dbUM4bLMVHCBZoS',
+      nftAddress: '43riPPJd8QwqRjbhJZKewMjbc4iKhnTGJR9Magk1BqKG',
       chain: 'solana',
       images: ['/assets/Villa 1.gif.mp4']
     }
   });
 
   const v2 = await prisma.villa.upsert({
-    where: { nftAddress: 'd4Qqt3UzxcQBhqpRBZcQzknokCiGA82RRMzzwXBPYUg' },
+    where: { nftAddress: 'AUsosPL4ymUkqzisoUAMAqKj2VMGhduBhsS3ZnS7VXEy' },
     update: {},
     create: {
       id: 'v2',
@@ -52,14 +52,14 @@ async function main() {
       ery: 9.2,
       ary: 9.2,
       legalStructure: 'FRACTIONAL_OWNERSHIP',
-      nftAddress: 'd4Qqt3UzxcQBhqpRBZcQzknokCiGA82RRMzzwXBPYUg',
+      nftAddress: 'AUsosPL4ymUkqzisoUAMAqKj2VMGhduBhsS3ZnS7VXEy',
       chain: 'solana',
       images: ['/assets/Villa 2.gif.mp4']
     }
   });
 
   const v3 = await prisma.villa.upsert({
-    where: { nftAddress: 'GABXPkqndQ7Fb7C2CST4pff1VkQXjcCtuvCdPpSRuQHy' },
+    where: { nftAddress: 'BNGXwuS1Wg6SG9Dpai8pgCXUXbYJAvyFiHEg8y4WKhMT' },
     update: {},
     create: {
       id: 'v3',
@@ -78,14 +78,14 @@ async function main() {
       ery: 14.0,
       ary: 14.0,
       legalStructure: 'FRACTIONAL_OWNERSHIP',
-      nftAddress: 'GABXPkqndQ7Fb7C2CST4pff1VkQXjcCtuvCdPpSRuQHy',
+      nftAddress: 'BNGXwuS1Wg6SG9Dpai8pgCXUXbYJAvyFiHEg8y4WKhMT',
       chain: 'solana',
       images: ['/assets/Villa 3.gif.mp4']
     }
   });
 
   const v4 = await prisma.villa.upsert({
-    where: { nftAddress: '5uNBRRYNEux1GovaiRrgaGJAHRUBp8hXQqNMdkFgFVf8' },
+    where: { nftAddress: 'HXnYCPQWz1eHV8ipEKNYZSqkW84fA9EYkD9HrWDfbwQJ' },
     update: {},
     create: {
       id: 'v4',
@@ -104,21 +104,22 @@ async function main() {
       ery: 11.0,
       ary: 11.0,
       legalStructure: 'FRACTIONAL_OWNERSHIP',
-      nftAddress: '5uNBRRYNEux1GovaiRrgaGJAHRUBp8hXQqNMdkFgFVf8',
+      nftAddress: 'HXnYCPQWz1eHV8ipEKNYZSqkW84fA9EYkD9HrWDfbwQJ',
       chain: 'solana',
       images: ['/assets/Villa 4.gif.mp4']
     }
   });
 
   const admin = await prisma.user.upsert({
-    where: { address: '41MLp5oX9yYwNoMCcQUw9ZRZQazEacU5JThrGv6E5wMU' },
+    where: { address: 'EUWDRpaq8yc5X7paoA7GMfLieL8qUfB3MTm744v7kTim' },
     update: {},
     create: {
-      address: '41MLp5oX9yYwNoMCcQUw9ZRZQazEacU5JThrGv6E5wMU',
+      address: 'EUWDRpaq8yc5X7paoA7GMfLieL8qUfB3MTm744v7kTim',
       name: 'ERP Admin',
       role: 'ADMIN'
     }
   });
+
 
   console.log({ v1, v2, v3, v4, admin });
 }
