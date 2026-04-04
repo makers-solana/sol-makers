@@ -62,23 +62,38 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
     try {
       const params = new URLSearchParams(window.location.search);
       const ref = params.get('ref');
-      if (ref && ref.length > 30) {
-        setReferralAddress(ref);
-        console.log("Referral address detected from URL:", ref);
+      // Accept either full solana address (>30 chars) or 6 char short code
+      if (ref && (ref.length > 30 || ref.length === 6)) {
+        setReferralAddress(ref.toUpperCase()); // ensure codes are uppercase
+        console.log("Referral address/code detected from URL:", ref);
       }
     } catch (e) {
       console.warn("Failed to extract referral from URL", e);
     }
   };
 
-  const copyReferralLink = () => {
+  const copyReferralLink = async () => {
     if (!publicKey) {
       alert("Please connect your Solana wallet first to generate your referral link!");
       return;
     }
-    const link = `${window.location.origin}${window.location.pathname}?ref=${publicKey.toBase58()}`;
-    navigator.clipboard.writeText(link);
-    alert("Referral link copied to clipboard: " + link);
+    try {
+      // Fetch or generate short code from backend
+      const res = await fetch(`https://api.thehistorymaker.io/api/users/referral-code?address=${publicKey.toBase58()}`);
+      if (!res.ok) throw new Error("Failed to get short code");
+      const data = await res.json();
+      
+      const shortCode = data.referralCode || publicKey.toBase58();
+      const link = `${window.location.origin}${window.location.pathname}?ref=${shortCode}`;
+      await navigator.clipboard.writeText(link);
+      alert("Referral link copied to clipboard: " + link);
+    } catch (err) {
+      console.error("Error copying referral link", err);
+      // Fallback to full address
+      const link = `${window.location.origin}${window.location.pathname}?ref=${publicKey.toBase58()}`;
+      navigator.clipboard.writeText(link);
+      alert("Referral link copied to clipboard (fallback): " + link);
+    }
   };
 
   const fetchSolPrice = async () => {
@@ -121,7 +136,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
       try {
         const NETWORK_TREASURIES: Record<string, string> = {
           devnet: '8bw4qgyQnChaa91hxUViB8gMLjmC39UvFsPMydwRmUN8',
-          mainnet: 'EUWDRpaq8yc5X7paoA7GMfLieL8qUfB3MTm744v7kTim'
+          mainnet: '5xKeGY3yZnMV3cz8MLqc9sjrbjH12yLbynB59aMpSvKz'
         };
         const treasuryAddress = NETWORK_TREASURIES[network] || NETWORK_TREASURIES.mainnet;
         const treasuryPubkey = new PublicKey(treasuryAddress);
@@ -185,7 +200,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
         const v1Sold = await getSafeSupply(currentAddresses.v1);
         backendVillas.push({
           id: 'v1',
-          name: 'Uluwatu Cliffside Villa',
+          name: 'Villa Dreamland 1',
           location: 'Uluwatu, Bali',
           nftAddress: currentAddresses.v1,
           pricePerShareUsd: 100,
@@ -207,7 +222,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
         const v2Sold = await getSafeSupply(currentAddresses.v2);
         backendVillas.push({
           id: 'v2',
-          name: 'The Ubud Jungle Sanctuary',
+          name: 'Villa Dreamland 2',
           location: 'Uluwatu, Bali',
           nftAddress: currentAddresses.v2,
           pricePerShareUsd: 100,
@@ -229,7 +244,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
         const v3Sold = await getSafeSupply(currentAddresses.v3);
         backendVillas.push({
           id: 'v3',
-          name: 'Seminyak Beachfront Villa',
+          name: 'Villa Dreamland 3',
           location: 'Uluwatu, Bali',
           nftAddress: currentAddresses.v3,
           pricePerShareUsd: 100,
@@ -251,7 +266,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
         const v4Sold = await getSafeSupply(currentAddresses.v4);
         backendVillas.push({
           id: 'v4',
-          name: 'Canggu Eco Villa',
+          name: 'Villa Dreamland 4',
           location: 'Uluwatu, Bali',
           nftAddress: currentAddresses.v4,
           pricePerShareUsd: 100,
@@ -279,7 +294,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
 
   const calculateReturn = (villa: any) => {
     const yieldRate = parseFloat(villa.apy) / 100;   // villa objects use .apy, not .ery
-    const pricePerShareSol = 100 / solPriceUsd;
+    const pricePerShareSol = 0.02;
     return `${(investAmount * pricePerShareSol * yieldRate).toLocaleString(undefined, { maximumFractionDigits: 4 })} SOL`;
   };
 
@@ -298,9 +313,15 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
     try {
       console.log("Requesting Smart Transaction Builder from Backend...");
       
-      const pricePerShareSol = 100 / solPriceUsd;
+      const pricePerShareSol = 0.02;
       const totalLamports = Math.floor(investAmount * pricePerShareSol * 1e9);
-      const isReferralValid = referralAddress && referralAddress.length > 20;
+      
+      // Validate referral: must be valid length (6 chars OR >30 chars) AND not self-referral
+      const isReferralValid = referralAddress &&
+        (referralAddress.length === 6 || referralAddress.length > 30) &&
+        referralAddress !== publicKey.toBase58();
+
+      const referralLamports = isReferralValid ? Math.floor(totalLamports * 0.1) : 0;
 
       const payload = {
         buyerAddress: publicKey.toBase58(),
@@ -308,11 +329,11 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
         amountTokens: investAmount,
         totalLamports: totalLamports,
         referralAddress: isReferralValid ? referralAddress : null,
-        referralLamports: isReferralValid ? Math.floor(totalLamports * 0.1) : 0,
+        referralLamports,
         network: network
       };
 
-      // Call the newly created Next.js backend endpoint 
+      // Call the Next.js backend endpoint 
       const response = await fetch('https://api.thehistorymaker.io/api/solana/build-tx', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -341,14 +362,39 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
       const signature = await sendTransaction(transaction, connection);
       
       console.log("Solana Transaction Signature:", signature);
-      alert(`Transaction sent! Signature: ${signature}`);
 
+      // --- Record referral to database if applicable ---
+      if (isReferralValid && signature) {
+        try {
+          const totalSol = totalLamports / 1e9;
+          const commissionSol = referralLamports / 1e9;
+          await fetch('https://api.thehistorymaker.io/api/referrals/record', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              referrerAddress: referralAddress,
+              investorAddress: publicKey.toBase58(),
+              villaId: selectedVilla.id || selectedVilla.nftAddress,
+              amountSol: totalSol,
+              commissionSol: commissionSol,
+              txHash: signature,
+            }),
+          });
+          console.log(`[Referral] Recorded: ${commissionSol} SOL commission to ${referralAddress}`);
+        } catch (refErr) {
+          // Non-critical — transaction already succeeded, just log the error
+          console.warn('[Referral] Failed to record referral in DB:', refErr);
+        }
+      }
+
+      alert(`Transaction sent! Signature: ${signature}`);
       handleTransactionComplete();
     } catch (error: any) {
       console.error("Solana Transaction failed:", error);
       alert(`Transaction failed: ${error.message}`);
     }
   };
+
 
   const handleTransactionComplete = () => {
     setPurchaseSuccess(true);
@@ -609,7 +655,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
                   <span className="glass-badge__dot"></span> APY {villa.apy}%
                 </div>
                 <div className="glass-badge glass-badge--aqua" style={{ position: 'absolute', bottom: '16px', right: '16px', fontSize: '0.75rem', background: 'var(--accent-aqua)', color: '#000', border: 'none' }}>
-                  {villa.chain === 'solana' ? `◎ ${(100 / solPriceUsd).toFixed(3)} / NFT` : `$${villa.pricePerShare} / token`}
+                  {villa.chain === 'solana' ? `◎ ${(0.02).toFixed(3)} / NFT` : `$${villa.pricePerShare} / token`}
                 </div>
               </div>
 
@@ -740,11 +786,11 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid var(--card-border)' }}>
                           <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600 }}>Total Asset Price</span>
-                          <span style={{ fontWeight: 900, fontSize: '1.1rem', color: 'var(--text-color)' }}>{(investAmount * (100 / solPriceUsd)).toFixed(3)} SOL</span>
+                          <span style={{ fontWeight: 900, fontSize: '1.1rem', color: 'var(--text-color)' }}>{(investAmount * (0.02)).toFixed(3)} SOL</span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                           <span>Est. USD Cost</span>
-                          <span>${(investAmount * 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span>${(investAmount * 0.02 * solPriceUsd).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
 
                         <div style={{ marginBottom: '24px' }}>
@@ -761,7 +807,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
 
                       <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ffffff', marginTop: '20px', paddingTop: '12px', borderTop: '1px solid var(--card-border)' }}>
                         <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>Est. Annual Yield (APY)</span>
-                        <span style={{ fontWeight: 900, fontSize: '1.1rem' }}>+ {(investAmount * (100 / solPriceUsd) * (parseFloat(selectedVilla.apy) / 100)).toFixed(4)} SOL</span>
+                        <span style={{ fontWeight: 900, fontSize: '1.1rem' }}>+ {(investAmount * (0.02) * (parseFloat(selectedVilla.apy) / 100)).toFixed(4)} SOL</span>
                       </div>
                     </div>
 
