@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 const SOLANA_RPC = "https://solana-rpc.publicnode.com";
 const connection = new Connection(SOLANA_RPC);
-const TREASURY_WALLET_ADDRESS = 'EUWDRpaq8yc5X7paoA7GMfLieL8qUfB3MTm744v7kTim';
+const TREASURY_WALLET_ADDRESS = '5xKeGY3yZnMV3cz8MLqc9sjrbjH12yLbynB59aMpSvKz';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': 'https://thehistorymaker.io',

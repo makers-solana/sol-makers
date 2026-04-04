@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import { Connection, PublicKey, Transaction, SystemProgram, Keypair } from '@solana/web3.js';
 import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountIdempotentInstruction } from '@solana/spl-token';
 import bs58 from 'bs58';
+import { PrismaClient } from '@prisma/client';
 
-
+const prisma = new PrismaClient();
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': 'https://thehistorymaker.io',
@@ -29,6 +30,23 @@ export async function POST(req: Request) {
     if (!buyerAddress || !mintAddress || !amountTokens || !totalLamports || !network) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400, headers: corsHeaders });
     }
+
+    let actualReferralAddress = referralAddress;
+    
+    // If referralAddress is a short code (6 characters), look it up
+    if (referralAddress && referralAddress.length === 6) {
+      const user = await prisma.user.findUnique({
+        where: { referralCode: referralAddress },
+      });
+      if (user && user.address) {
+        actualReferralAddress = user.address;
+      } else {
+        console.warn(`Referral code ${referralAddress} not found in DB`);
+        actualReferralAddress = null; // invalid code, ignore referral
+      }
+    }
+
+    const finalReferralLamports = actualReferralAddress ? referralLamports : 0;
 
     const isMainnet = network === 'mainnet';
     
@@ -70,10 +88,10 @@ export async function POST(req: Request) {
 
     // 1. Add SOL Transfers (Buyer -> Treasury & Referral)
     let finalSellerLamports = totalLamports;
-    if (referralAddress && referralLamports && referralLamports > 0) {
+    if (actualReferralAddress && finalReferralLamports && finalReferralLamports > 0) {
       try {
-        const referralPubkey = new PublicKey(referralAddress);
-        finalSellerLamports = totalLamports - referralLamports;
+        const referralPubkey = new PublicKey(actualReferralAddress);
+        finalSellerLamports = totalLamports - finalReferralLamports;
         
         transaction.add(
           SystemProgram.transfer({
@@ -84,7 +102,7 @@ export async function POST(req: Request) {
           SystemProgram.transfer({
             fromPubkey: buyerPubkey,
             toPubkey: referralPubkey,
-            lamports: referralLamports,
+            lamports: finalReferralLamports,
           })
         );
       } catch (e) {

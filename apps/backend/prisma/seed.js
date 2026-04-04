@@ -11,7 +11,7 @@ async function main() {
     update: {},
     create: {
       id: 'v1',
-      name: 'Uluwatu Cliffside Villa',
+      name: 'Villa Dreamland 1',
       location: 'Uluwatu, Bali',
       description: 'Premium fractionalized modern cliffside villa in Uluwatu, Bali.',
       pricePerShare: 100,
@@ -37,7 +37,7 @@ async function main() {
     update: {},
     create: {
       id: 'v2',
-      name: 'Ubud Jungle Retreat',
+      name: 'Villa Dreamland 2',
       location: 'Ubud, Bali',
       description: 'Luxury tropical jungle villa in Ubud.',
       pricePerShare: 100,
@@ -63,7 +63,7 @@ async function main() {
     update: {},
     create: {
       id: 'v3',
-      name: 'Seminyak Beachfront Villa',
+      name: 'Villa Dreamland 3',
       location: 'Seminyak, Bali',
       description: 'Exclusive luxury beachfront villa in Seminyak.',
       pricePerShare: 100,
@@ -89,7 +89,7 @@ async function main() {
     update: {},
     create: {
       id: 'v4',
-      name: 'Canggu Eco Villa',
+      name: 'Villa Dreamland 4',
       location: 'Canggu, Bali',
       description: 'Minimalist eco-friendly villa in Canggu.',
       pricePerShare: 100,
@@ -111,10 +111,10 @@ async function main() {
   });
 
   const admin = await prisma.user.upsert({
-    where: { address: 'EUWDRpaq8yc5X7paoA7GMfLieL8qUfB3MTm744v7kTim' },
+    where: { address: '5xKeGY3yZnMV3cz8MLqc9sjrbjH12yLbynB59aMpSvKz' },
     update: {},
     create: {
-      address: 'EUWDRpaq8yc5X7paoA7GMfLieL8qUfB3MTm744v7kTim',
+      address: '5xKeGY3yZnMV3cz8MLqc9sjrbjH12yLbynB59aMpSvKz',
       name: 'ERP Admin',
       role: 'ADMIN'
     }

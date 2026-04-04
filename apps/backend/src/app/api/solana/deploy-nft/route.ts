@@ -17,9 +17,11 @@ const corsHeaders = {
 
 export const dynamic = 'force-dynamic';
 
-// Treasury addresses that are allowed to deploy
-const ALLOWED_TREASURIES = [
-  'EUWDRpaq8yc5X7paoA7GMfLieL8qUfB3MTm744v7kTim', // Mainnet
+// Wallets authorized to deploy NFTs
+// Treasury wallet also receives payments & holds unsold tokens
+const ALLOWED_DEPLOYERS = [
+  '5xKeGY3yZnMV3cz8MLqc9sjrbjH12yLbynB59aMpSvKz', // Treasury (Mainnet) — receives payments & deploys
+  'EUWDRpaq8yc5X7paoA7GMfLieL8qUfB3MTm744v7kTim', // Deployer (Mainnet) — deploy only, not treasury receiver
   '8bw4qgyQnChaa91hxUViB8gMLjmC39UvFsPMydwRmUN8', // Devnet
 ];
 
@@ -48,10 +50,10 @@ export async function POST(req: Request) {
     const supply = parseInt(supplyStr) || 40000;
     const attributesRaw = attributesStr ? JSON.parse(attributesStr) : [];
 
-    // Gate: only treasury wallet can deploy
-    if (!callerAddress || !ALLOWED_TREASURIES.includes(callerAddress)) {
+    // Gate: only authorized deployer wallet can deploy
+    if (!callerAddress || !ALLOWED_DEPLOYERS.includes(callerAddress)) {
       return NextResponse.json(
-        { error: 'Unauthorized. Only the Treasury wallet can deploy NFTs.' },
+        { error: 'Unauthorized. Only the Authorized Deployer wallet can deploy NFTs.' },
         { status: 403, headers: corsHeaders }
       );
     }

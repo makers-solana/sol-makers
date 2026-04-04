@@ -428,7 +428,7 @@ const Home = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
                 <article className="card">
                   <div className="card__top">
                     <span className="tag">Avg Yield</span>
-                    <span className="val"><b>12.4</b>%</span>
+                    <span className="val"><b>0.0044</b></span>
                   </div>
                   <div className="bar"><i style={{ width: '72%' }}></i></div>
                   <div className="card__foot">Net ROI (Leasehold)</div>
@@ -485,13 +485,13 @@ const Home = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
               <div className="kicker">Featured Villa Collection</div>
               <h2 className="title title--sm">World-Class Assets</h2>
               <p className="desc">
-                From Uluwatu We curate only the most productive real estate.
+                From Bali We curate only the most productive real estate.
               </p>
 
               <div className="chips">
-                <span className="mini">Uluwatu Villa 1</span>
-                <span className="mini">Uluwatu Villa 2</span>
-                <span className="mini">Uluwatu Villa 3</span>
+                <span className="mini">Villa Dreamland 1</span>
+                <span className="mini">Villa Dreamland 2</span>
+                <span className="mini">Villa Dreamland 3</span>
               </div>
             </div>
 
@@ -502,28 +502,28 @@ const Home = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
                     src="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&q=80&w=800"
                     alt="Villa 1"
                   />
-                  <span className="tile__cap">Uluwatu Villa 1</span>
+                  <span className="tile__cap">Villa Dreamland 1</span>
                 </div>
                 <div className="tile">
                   <img
                     src="https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&q=80&w=800"
                     alt="Villa 2"
                   />
-                  <span className="tile__cap">Uluwatu Villa 2</span>
+                  <span className="tile__cap">Villa Dreamland 2</span>
                 </div>
                 <div className="tile">
                   <img
                     src="https://balivillasale.com/wp-content/uploads/2022/12/WhatsApp-Image-2022-12-19-at-12.27.30-2-592x444.jpeg"
                     alt="Villa 3"
                   />
-                  <span className="tile__cap">Uluwatu Villa 3</span>
+                  <span className="tile__cap">Villa Dreamland 3</span>
                 </div>
                 <div className="tile">
                   <img
                     src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=800"
                     alt="Villa 4"
                   />
-                  <span className="tile__cap">Uluwatu Villa 4</span>
+                  <span className="tile__cap">Villa Dreamland 4</span>
                 </div>
               </div>
             </div>

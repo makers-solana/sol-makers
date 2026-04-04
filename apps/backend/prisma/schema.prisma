@@ -102,10 +102,11 @@ model Payout {
 model User {
   id        String   @id @default(cuid())
   address   String   @unique
-  name      String?
-  role      Role     @default(INVESTOR)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  name            String?
+  role            Role     @default(INVESTOR)
+  referralCode    String?  @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
   
   referrals Referral[] @relation("Referrer")
 }

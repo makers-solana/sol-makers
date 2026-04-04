@@ -49,10 +49,10 @@ async function main() {
 
   // 4 Villas
   const villas = [
-    { name: 'Uluwatu Cliffside Villa', symbol: 'ULWV', supply: 40000 },
-    { name: 'Ubud Jungle Retreat', symbol: 'UBJV', supply: 40000 },
-    { name: 'Seminyak Beachfront Villa', symbol: 'SMBV', supply: 40000 },
-    { name: 'Canggu Eco Villa', symbol: 'CGEV', supply: 40000 }
+    { name: 'Villa Dreamland 1', symbol: 'ULWV', supply: 40000 },
+    { name: 'Villa Dreamland 2', symbol: 'UBJV', supply: 40000 },
+    { name: 'Villa Dreamland 3', symbol: 'SMBV', supply: 40000 },
+    { name: 'Villa Dreamland 4', symbol: 'CGEV', supply: 40000 }
   ];
 
   const delay = (ms: number) => new Promise(res => setTimeout(res, ms));

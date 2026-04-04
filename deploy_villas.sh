@@ -9,7 +9,7 @@ echo "Deploying to Solana Network: $NETWORK"
 echo "Deploying Villa 1: Uluwatu"
 ~/makers/deploy-nft.sh deploy \
   --network "$NETWORK" \
-  -n "Uluwatu Cliffside Villa" \
+  -n "Villa Dreamland 1" \
   -s "ULWV" \
   -d "Premium fractionalized modern cliffside villa in Uluwatu, Bali. 40,000 shares available." \
   -i "image" \
@@ -18,7 +18,7 @@ echo "Deploying Villa 1: Uluwatu"
 echo "Deploying Villa 2: Ubud"
 ~/makers/deploy-nft.sh deploy \
   --network "$NETWORK" \
-  -n "Ubud Jungle Retreat" \
+  -n "Villa Dreamland 2" \
   -s "UBJV" \
   -d "Luxury tropical jungle villa in Ubud, surrounded by palm trees. 40,000 shares available." \
   -i "image" \
@@ -27,7 +27,7 @@ echo "Deploying Villa 2: Ubud"
 echo "Deploying Villa 3: Seminyak"
 ~/makers/deploy-nft.sh deploy \
   --network "$NETWORK" \
-  -n "Seminyak Beachfront Villa" \
+  -n "Villa Dreamland 3" \
   -s "SMBV" \
   -d "Exclusive luxury beachfront villa in Seminyak, perfect for sunset views. 40,000 shares available." \
   -i "image" \
@@ -36,7 +36,7 @@ echo "Deploying Villa 3: Seminyak"
 echo "Deploying Villa 4: Canggu"
 ~/makers/deploy-nft.sh deploy \
   --network "$NETWORK" \
-  -n "Canggu Eco Villa" \
+  -n "Villa Dreamland 4" \
   -s "CGEV" \
   -d "Minimalist eco-friendly villa with stunning rice terrace views in Canggu. 40,000 shares available." \
   -i "image" \

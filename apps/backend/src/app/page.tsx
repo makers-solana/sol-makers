@@ -364,14 +364,15 @@ export default function ERPDashboard() {
     );
 
     const renderOperations = () => {
-        const TREASURY_ADDRESSES = [
-            'EUWDRpaq8yc5X7paoA7GMfLieL8qUfB3MTm744v7kTim',
-            '8bw4qgyQnChaa91hxUViB8gMLjmC39UvFsPMydwRmUN8',
+        const DEPLOYER_ADDRESSES = [
+            '5xKeGY3yZnMV3cz8MLqc9sjrbjH12yLbynB59aMpSvKz', // Treasury — receives payments & deploys
+            'EUWDRpaq8yc5X7paoA7GMfLieL8qUfB3MTm744v7kTim', // Deployer — deploy only
+            '8bw4qgyQnChaa91hxUViB8gMLjmC39UvFsPMydwRmUN8', // Devnet
         ];
 
-        const isTreasury = publicKey && TREASURY_ADDRESSES.includes(publicKey.toBase58());
+        const isDeployer = publicKey && DEPLOYER_ADDRESSES.includes(publicKey.toBase58());
 
-        if (!solanaConnected || !isTreasury) {
+        if (!solanaConnected || !isDeployer) {
             return (
                 <div className="section-content animate-fadeIn">
                     <h2 className="section-title">Operations — NFT Deployment</h2>
@@ -385,17 +386,25 @@ export default function ERPDashboard() {
                         <ShieldCheck size={56} color="#ff3b30" style={{ marginBottom: '20px', opacity: 0.7 }} />
                         <h3 style={{ color: '#ff3b30', marginBottom: '12px', fontSize: '1.3rem' }}>Access Restricted</h3>
                         <p style={{ color: 'var(--spotify-gray-lighter)', maxWidth: '500px', margin: '0 auto 24px auto', lineHeight: '1.6' }}>
-                            This section is exclusively available to the <strong style={{ color: 'white' }}>Treasury Wallet</strong>.<br/>
+                            This section is exclusively available to the <strong style={{ color: 'white' }}>Authorized Deployer Wallet</strong>.<br/>
                             Please connect the authorized wallet to access NFT deployment operations.
                         </p>
-                        {!solanaConnected && (
-                            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
+                        {!solanaConnected ? (
+                            <div style={{ 
+                                display: 'flex', 
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                gap: '15px'
+                            }}>
+                                <p style={{ fontSize: '0.85rem', color: 'var(--spotify-gray-lighter)' }}>
+                                    Connection rule: Authorize your session to continue.
+                                </p>
                                 <WalletMultiButton />
                             </div>
-                        )}
-                        {solanaConnected && !isTreasury && (
+                        ) : null}
+                        {solanaConnected && !isDeployer && (
                             <p style={{ fontSize: '0.8rem', color: '#ff3b30', marginTop: '12px' }}>
-                                Connected: {publicKey?.toBase58().slice(0, 8)}... — Not a Treasury wallet.
+                                Connected: {publicKey?.toBase58().slice(0, 8)}... — Not an authorized deployer.
                             </p>
                         )}
                     </div>
@@ -662,7 +671,7 @@ export default function ERPDashboard() {
                 <div className="scene__blob scene__blob--3"></div>
             </div>
 
-            <nav className="glass" style={{
+            <nav className="glass glass-header" style={{
                 position: 'fixed',
                 inset: '14px 14px auto 14px',
                 zIndex: 100,
