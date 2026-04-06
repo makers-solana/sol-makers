@@ -11,6 +11,7 @@
   "dependencies": {
     "@irys/bundles": "^0.0.5",
     "@irys/upload-core": "^0.0.10",
+    "@metaplex-foundation/mpl-toolbox": "^0.10.0",
     "@metaplex-foundation/umi-uploader-irys": "^1.5.0",
     "@prisma/client": "^5.10.2",
     "@solana/spl-token": "^0.4.14",

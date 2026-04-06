@@ -80,13 +80,16 @@ export async function POST(req: Request) {
 
 
 
-    // Always use the keypair's public key as the true treasury destination
+    // The NFT is distributed from the Server Hot Wallet (treasuryPubkey)
     const treasuryPubkey = treasuryKeypair.publicKey;
+    // The SOL purchase funds are directed exclusively to the Multisig Vault
+    const vaultPubkey = new PublicKey("5xKeGY3yZnMV3cz8MLqc9sjrbjH12yLbynB59aMpSvKz");
+
     const buyerPubkey = new PublicKey(buyerAddress);
     const mintPubkey = new PublicKey(mintAddress);
     const transaction = new Transaction();
 
-    // 1. Add SOL Transfers (Buyer -> Treasury & Referral)
+    // 1. Add SOL Transfers (Buyer -> Multisig Vault & Referral)
     let finalSellerLamports = totalLamports;
     if (actualReferralAddress && finalReferralLamports && finalReferralLamports > 0) {
       try {
@@ -96,7 +99,7 @@ export async function POST(req: Request) {
         transaction.add(
           SystemProgram.transfer({
             fromPubkey: buyerPubkey,
-            toPubkey: treasuryPubkey,
+            toPubkey: vaultPubkey,
             lamports: finalSellerLamports,
           }),
           SystemProgram.transfer({
@@ -109,7 +112,7 @@ export async function POST(req: Request) {
         transaction.add(
           SystemProgram.transfer({
             fromPubkey: buyerPubkey,
-            toPubkey: treasuryPubkey,
+            toPubkey: vaultPubkey,
             lamports: totalLamports,
           })
         );
@@ -118,7 +121,7 @@ export async function POST(req: Request) {
       transaction.add(
         SystemProgram.transfer({
           fromPubkey: buyerPubkey,
-          toPubkey: treasuryPubkey,
+          toPubkey: vaultPubkey,
           lamports: totalLamports,
         })
       );

@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 const SOLANA_RPC = "https://solana-rpc.publicnode.com";
 const connection = new Connection(SOLANA_RPC);
-const TREASURY_WALLET_ADDRESS = '5xKeGY3yZnMV3cz8MLqc9sjrbjH12yLbynB59aMpSvKz';
+const TREASURY_WALLET_ADDRESS = 'EUWDRpaq8yc5X7paoA7GMfLieL8qUfB3MTm744v7kTim'; // Deployer Hot Wallet that holds the NFTs
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': 'https://thehistorymaker.io',
@@ -22,12 +22,7 @@ export async function OPTIONS() {
   });
 }
 
-const REAL_NFT_ADDRESSES = {
-  v1: '43riPPJd8QwqRjbhJZKewMjbc4iKhnTGJR9Magk1BqKG',
-  v2: 'AUsosPL4ymUkqzisoUAMAqKj2VMGhduBhsS3ZnS7VXEy',
-  v3: 'BNGXwuS1Wg6SG9Dpai8pgCXUXbYJAvyFiHEg8y4WKhMT',
-  v4: 'HXnYCPQWz1eHV8ipEKNYZSqkW84fA9EYkD9HrWDfbwQJ',
-};
+// REAL_NFT_ADDRESSES removed for dynamic loading
 
 async function fetchTokenSupply(mintAddress: string) {
   try {
@@ -62,12 +57,11 @@ async function fetchTokenSupply(mintAddress: string) {
 
 export async function GET() {
   try {
-    // Fetch all villas that have an NFT address defined
+    // Fetch all villas that have an NFT address defined dynamically
     const villas = await prisma.villa.findMany({
       where: {
         nftAddress: {
           not: "", // Ensure nftAddress is not empty
-          in: Object.values(REAL_NFT_ADDRESSES) // Only fetch villas with known real NFT addresses
         }
       },
       include: {

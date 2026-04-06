@@ -184,6 +184,28 @@ export default function ERPDashboard() {
         }
     };
 
+    const handleDeleteVilla = async (id: string) => {
+        const confirmDelete = window.confirm('Are you sure you want to remove this asset? It will be deleted from the marketplace permanently.');
+        if (!confirmDelete) return;
+
+        try {
+            const res = await fetch(`/api/villas/${id}`, {
+                method: 'DELETE',
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert('Asset successfully removed from the registry.');
+                fetchData(); // Refresh the list
+            } else {
+                alert('Error deleting asset: ' + data.error);
+            }
+        } catch (error) {
+            console.error('Delete error:', error);
+            alert('Failed to delete asset. Check console for details.');
+        }
+    };
+
+
     const renderDashboard = () => (
         <div className="section-content animate-fadeIn">
             <h2 className="section-title">Network Status & Key Metrics</h2>
@@ -353,7 +375,7 @@ export default function ERPDashboard() {
                                 <td><span className="tag" style={{ background: 'rgba(29, 185, 84, 0.1)', color: 'var(--spotify-green)' }}>ACTIVE</span></td>
                                 <td>
                                     <button className="btn-icon"><Pencil size={16} /></button>
-                                    <button className="btn-icon" style={{ marginLeft: '10px' }}><Trash2 size={16} /></button>
+                                    <button className="btn-icon" style={{ marginLeft: '10px' }} onClick={() => handleDeleteVilla(villa.id)}><Trash2 size={16} /></button>
                                 </td>
                             </tr>
                         );

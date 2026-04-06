@@ -125,168 +125,48 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
   }, [selectedVilla]);
 
 
-  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-  const fetchTokenSupply = async (mintAddress: string) => {
-    try {
-      const mintPubkey = new PublicKey(mintAddress);
-      const supplyInfo = await connection.getTokenSupply(mintPubkey);
-      const totalSupply = supplyInfo.value.uiAmount || 0;
-
-      try {
-        const NETWORK_TREASURIES: Record<string, string> = {
-          devnet: '8bw4qgyQnChaa91hxUViB8gMLjmC39UvFsPMydwRmUN8',
-          mainnet: '5xKeGY3yZnMV3cz8MLqc9sjrbjH12yLbynB59aMpSvKz'
-        };
-        const treasuryAddress = NETWORK_TREASURIES[network] || NETWORK_TREASURIES.mainnet;
-        const treasuryPubkey = new PublicKey(treasuryAddress);
-        const tokenAccounts = await connection.getTokenAccountsByOwner(treasuryPubkey, { mint: mintPubkey });
-
-        // If treasury has NO token account for this mint, it means no transfers have
-        // occurred yet — treasury implicitly holds the full supply, so nothing is sold.
-        if (tokenAccounts.value.length === 0) {
-          return 0;
-        }
-
-        const balanceRecord = await connection.getTokenAccountBalance(tokenAccounts.value[0].pubkey);
-        const treasuryBalance = balanceRecord.value.uiAmount || 0;
-
-        // sold = tokens minted − tokens still held by treasury
-        return Math.max(0, totalSupply - treasuryBalance);
-      } catch (balErr) {
-        console.warn(`Could not fetch treasury balance for ${mintAddress}, defaulting to 0 sold:`, balErr);
-        return 0;
-      }
-    } catch (e) {
-      console.error(`Failed to fetch supply for ${mintAddress}:`, e);
-      return 0;
-    }
-  };
-
   const fetchVillas = async () => {
     try {
       setIsLoading(true);
-
-      const NFT_ADDRESSES: Record<SolanaNetwork, Record<string, string>> = {
-        devnet: {
-          v1: 'BxUy8Xyj4ZXJsc6m6HdqPNQT9UY35dbUM4bLMVHCBZoS',
-          v2: 'd4Qqt3UzxcQBhqpRBZcQzknokCiGA82RRMzzwXBPYUg',
-          v3: 'GABXPkqndQ7Fb7C2CST4pff1VkQXjcCtuvCdPpSRuQHy',
-          v4: '5uNBRRYNEux1GovaiRrgaGJAHRUBp8hXQqNMdkFgFVf8',
-        },
-        mainnet: {
-          v1: 'AUsosPL4ymUkqzisoUAMAqKj2VMGhduBhsS3ZnS7VXEy',
-          v2: 'HXnYCPQWz1eHV8ipEKNYZSqkW84fA9EYkD9HrWDfbwQJ',
-          v3: 'BNGXwuS1Wg6SG9Dpai8pgCXUXbYJAvyFiHEg8y4WKhMT',
-          v4: '43riPPJd8QwqRjbhJZKewMjbc4iKhnTGJR9Magk1BqKG',
-        }
-      };
-
-      const currentAddresses = NFT_ADDRESSES[network];
-
-      const getSafeSupply = async (address: string) => {
-        if (!address) return 0;
-        try {
-          return await fetchTokenSupply(address);
-        } catch (e) {
-          console.warn(`Failed to fetch supply for ${address} on ${network}`);
-          return 0;
-        }
-      };
-
-      const backendVillas = [];
-
-      if (currentAddresses.v1) {
-        const v1Sold = await getSafeSupply(currentAddresses.v1);
-        backendVillas.push({
-          id: 'v1',
-          name: 'Villa Dreamland 1',
-          location: 'Uluwatu, Bali',
-          nftAddress: currentAddresses.v1,
-          pricePerShareUsd: 100,
-          apy: '0.0044',
-          totalTokens: 40000,
-          tokensSold: v1Sold,
-          bedrooms: 2,
-          bathrooms: 2,
-          sqm: 131,
-          occupancyStatus: 'Active',
-          images: ['/assets/Villa 1.gif.mp4'],
-          description: 'Premium fractionalized modern cliffside villa in Uluwatu, Bali. 40,000 shares available.',
-          chain: 'solana'
+      const res = await fetch('https://api.thehistorymaker.io/api/villas');
+      const data = await res.json();
+      
+      if (Array.isArray(data)) {
+        const mappedVillas = data.map(v => {
+           const images = v.images && v.images.length > 0 ? v.images : ['/assets/Villa 1.gif.mp4'];
+           let apy = '0.0044';
+           if (v.erp && v.erp.apy) {
+             apy = v.erp.apy.replace('%', '');
+           }
+           
+           return {
+             id: v.id,
+             name: v.name,
+             location: v.location,
+             nftAddress: v.nftAddress,
+             pricePerShareUsd: v.pricePerShare || 100,
+             apy: apy,
+             totalTokens: v.totalTokens || 40000,
+             tokensSold: v.tokensSold || 0,
+             bedrooms: v.bedrooms,
+             bathrooms: v.bathrooms,
+             sqm: v.sqm,
+             occupancyStatus: v.occupancyStatus || 'Active',
+             images: images,
+             description: v.description,
+             chain: v.chain || 'solana'
+           };
         });
+        
+        // Sort mapped villas
+        mappedVillas.sort((a,b) => a.name.localeCompare(b.name));
+        setVillas(mappedVillas);
+      } else {
+        setVillas([]);
       }
-
-      if (currentAddresses.v2) {
-        await delay(1200);
-        const v2Sold = await getSafeSupply(currentAddresses.v2);
-        backendVillas.push({
-          id: 'v2',
-          name: 'Villa Dreamland 2',
-          location: 'Uluwatu, Bali',
-          nftAddress: currentAddresses.v2,
-          pricePerShareUsd: 100,
-          apy: '0.0044',
-          totalTokens: 40000,
-          tokensSold: v2Sold,
-          bedrooms: 2,
-          bathrooms: 2,
-          sqm: 131,
-          occupancyStatus: 'Active',
-          images: ['/assets/Villa 2.gif.mp4'],
-          description: 'Luxury tropical villa Uluwatu, surrounded by palm trees. 40,000 shares available.',
-          chain: 'solana'
-        });
-      }
-
-      if (currentAddresses.v3) {
-        await delay(1200);
-        const v3Sold = await getSafeSupply(currentAddresses.v3);
-        backendVillas.push({
-          id: 'v3',
-          name: 'Villa Dreamland 3',
-          location: 'Uluwatu, Bali',
-          nftAddress: currentAddresses.v3,
-          pricePerShareUsd: 100,
-          apy: '0.0044',
-          totalTokens: 40000,
-          tokensSold: v3Sold,
-          bedrooms: 2,
-          bathrooms: 2,
-          sqm: 131,
-          occupancyStatus: 'Active',
-          images: ['/assets/Villa 3.gif.mp4'],
-          description: 'Exclusive luxury Uluwatu, perfect for sunset views. 40,000 shares available.',
-          chain: 'solana'
-        });
-      }
-
-      if (currentAddresses.v4) {
-        await delay(1200);
-        const v4Sold = await getSafeSupply(currentAddresses.v4);
-        backendVillas.push({
-          id: 'v4',
-          name: 'Villa Dreamland 4',
-          location: 'Uluwatu, Bali',
-          nftAddress: currentAddresses.v4,
-          pricePerShareUsd: 100,
-          apy: '0.0044',
-          totalTokens: 40000,
-          tokensSold: v4Sold,
-          bedrooms: 2,
-          bathrooms: 2,
-          sqm: 131,
-          occupancyStatus: 'Active',
-          images: ['/assets/Villa 4.gif.mp4'],
-          description: 'Minimalist eco-friendly villa with stunning rice terrace views in Canggu. 40,000 shares available.',
-          chain: 'solana'
-        });
-      }
-
-      setVillas(backendVillas);
       setIsLoading(false);
     } catch (err) {
-      console.error('Sync villas error:', err);
+      console.error('Fetch villas error:', err);
       setVillas([]);
       setIsLoading(false);
     }
@@ -639,7 +519,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
               overflow: 'hidden'
             }}>
               <div style={{ position: 'relative', height: '240px', backgroundColor: 'rgba(0,0,0,0.2)' }}>
-                {villa.images?.[0]?.endsWith('.mp4') ? (
+                {(villa.images?.[0]?.endsWith('.mp4') || villa.images?.[0]?.includes('irys.xyz') || villa.images?.[0]?.includes('arweave.net')) ? (
                   <video
                     src={villa.images[0]}
                     style={{ width: '100%', height: '100%', objectFit: 'contain' }}
@@ -655,7 +535,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
                   <span className="glass-badge__dot"></span> APY {villa.apy}%
                 </div>
                 <div className="glass-badge glass-badge--aqua" style={{ position: 'absolute', bottom: '16px', right: '16px', fontSize: '0.75rem', background: 'var(--accent-aqua)', color: '#000', border: 'none' }}>
-                  {villa.chain === 'solana' ? `◎ ${(0.02).toFixed(3)} / NFT` : `$${villa.pricePerShare} / token`}
+                  {villa.chain === 'solana' ? `◎ ${(villa.pricePerShareUsd / solPriceUsd).toFixed(3)} / NFT` : `$${villa.pricePerShareUsd} / token`}
                 </div>
               </div>
 
@@ -747,7 +627,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2.5rem' }}>
                   <div>
-                    {selectedVilla.images?.[0]?.endsWith('.mp4') ? (
+                    {(selectedVilla.images?.[0]?.endsWith('.mp4') || selectedVilla.images?.[0]?.includes('irys.xyz') || selectedVilla.images?.[0]?.includes('arweave.net')) ? (
                       <video
                         src={selectedVilla.images[0]}
                         style={{ width: '100%', borderRadius: '24px', marginBottom: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}
@@ -786,11 +666,11 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid var(--card-border)' }}>
                           <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600 }}>Total Asset Price</span>
-                          <span style={{ fontWeight: 900, fontSize: '1.1rem', color: 'var(--text-color)' }}>{(investAmount * (0.02)).toFixed(3)} SOL</span>
+                          <span style={{ fontWeight: 900, fontSize: '1.1rem', color: 'var(--text-color)' }}>{(investAmount * (selectedVilla.pricePerShareUsd / solPriceUsd)).toFixed(3)} SOL</span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                           <span>Est. USD Cost</span>
-                          <span>${(investAmount * 0.02 * solPriceUsd).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span>${(investAmount * selectedVilla.pricePerShareUsd).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
 
                         <div style={{ marginBottom: '24px' }}>
@@ -807,7 +687,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
 
                       <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ffffff', marginTop: '20px', paddingTop: '12px', borderTop: '1px solid var(--card-border)' }}>
                         <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>Est. Annual Yield (APY)</span>
-                        <span style={{ fontWeight: 900, fontSize: '1.1rem' }}>+ {(investAmount * (0.02) * (parseFloat(selectedVilla.apy) / 100)).toFixed(4)} SOL</span>
+                        <span style={{ fontWeight: 900, fontSize: '1.1rem' }}>+ {(investAmount * (selectedVilla.pricePerShareUsd / solPriceUsd) * (parseFloat(selectedVilla.apy) / 100)).toFixed(4)} SOL</span>
                       </div>
                     </div>
 

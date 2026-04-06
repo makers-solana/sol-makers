@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,117 +8,112 @@ datasource db {
 }
 
 model Villa {
-  id             String   @id @default(cuid())
-  name           String
-  location       String
-  description    String
-  legalStructure String   @default("FRACTIONAL_OWNERSHIP")
-  totalShares    Int      @default(100)
-  pricePerShare  Float
-  totalValue     Float
-  images         String[]
-  nftAddress     String?  @unique
-  availableShares Int     @default(100)
-  chain          String?  @default("ethereum")
-  
-  // ERP Fields
-  occupancyStatus String   @default("VACANT") // VACANT, OCCUPIED, UNDER_MAINTENANCE
-  nightlyRate     Float    @default(0)
-  ery             Float    @default(0)        // (%) Estimated Rental Yield
-  ary             Float    @default(0)        // (%) Annualized Rental Yield
-  totalTokens     Int      @default(0)        // Total supply for fractionalization
-  tokensSold      Int      @default(0)        // Progress tracking
-  bedrooms        Int      @default(0)
-  bathrooms       Int      @default(0)
-  sqm             Float    @default(0)
-  lastMaintenance DateTime @default(now())
+  id              String           @id @default(cuid())
+  name            String
+  location        String
+  description     String
+  legalStructure  String           @default("FRACTIONAL_OWNERSHIP")
+  totalShares     Int              @default(100)
+  pricePerShare   Float
+  totalValue      Float
+  images          String[]
+  nftAddress      String?          @unique
+  availableShares Int              @default(100)
+  chain           String?          @default("ethereum")
+  occupancyStatus String           @default("VACANT")
+  nightlyRate     Float            @default(0)
+  ery             Float            @default(0)
+  ary             Float            @default(0)
+  totalTokens     Int              @default(0)
+  tokensSold      Int              @default(0)
+  bedrooms        Int              @default(0)
+  bathrooms       Int              @default(0)
+  sqm             Float            @default(0)
+  lastMaintenance DateTime         @default(now())
   nextMaintenance DateTime?
-  listingId      Int?      // Thirdweb Marketplace Listing ID
-  
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  
-  shares         Share[]
-  revenues       Revenue[]
+  listingId       Int?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   maintenanceLogs MaintenanceLog[]
   marketPrices    MarketPrice[]
+  revenues        Revenue[]
+  shares          Share[]
 }
 
 model MaintenanceLog {
-  id          String   @id @default(cuid())
-  villaId     String
-  villa       Villa    @relation(fields: [villaId], references: [id])
-  activity    String   // e.g., "Pool cleaning", "Roof repair"
-  cost        Float
-  date        DateTime @default(now())
-  performer   String   // Name of the contractor or staff
-  status      String   @default("COMPLETED") // SCHEDULED, IN_PROGRESS, COMPLETED
+  id        String   @id @default(cuid())
+  villaId   String
+  activity  String
+  cost      Float
+  date      DateTime @default(now())
+  performer String
+  status    String   @default("COMPLETED")
+  villa     Villa    @relation(fields: [villaId], references: [id])
 }
 
 model MarketPrice {
-  id          String   @id @default(cuid())
-  villaId     String
-  villa       Villa    @relation(fields: [villaId], references: [id])
-  price       Float    // Price in the third/secondary market
-  recordedAt  DateTime @default(now())
-  source      String   // e.g., "OpenSea", "Makers Market"
+  id         String   @id @default(cuid())
+  villaId    String
+  price      Float
+  recordedAt DateTime @default(now())
+  source     String
+  villa      Villa    @relation(fields: [villaId], references: [id])
 }
 
 model Share {
-  id        String   @id @default(cuid())
-  villaId   String
-  villa     Villa    @relation(fields: [villaId], references: [id])
-  ownerAddress String 
-  amount    Int      @default(1)
-  boughtAt  DateTime @default(now())
-  
+  id           String   @id @default(cuid())
+  villaId      String
+  ownerAddress String
+  amount       Int      @default(1)
+  boughtAt     DateTime @default(now())
+  villa        Villa    @relation(fields: [villaId], references: [id])
+
   @@unique([villaId, ownerAddress])
 }
 
 model Revenue {
-  id        String   @id @default(cuid())
-  villaId   String
-  villa     Villa    @relation(fields: [villaId], references: [id])
-  amount    Float    
-  period    DateTime 
+  id            String    @id @default(cuid())
+  villaId       String
+  amount        Float
+  period        DateTime
   distributedAt DateTime?
-  payouts   Payout[]
+  payouts       Payout[]
+  villa         Villa     @relation(fields: [villaId], references: [id])
 }
 
 model Payout {
   id           String   @id @default(cuid())
   revenueId    String
-  revenue      Revenue  @relation(fields: [revenueId], references: [id])
   ownerAddress String
   amount       Float
-  status       String   @default("PENDING") 
-  txHash       String?  
+  status       String   @default("PENDING")
+  txHash       String?
   createdAt    DateTime @default(now())
+  revenue      Revenue  @relation(fields: [revenueId], references: [id])
 }
 
 model User {
-  id        String   @id @default(cuid())
-  address   String   @unique
-  name            String?
-  role            Role     @default(INVESTOR)
-  referralCode    String?  @unique
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  referrals Referral[] @relation("Referrer")
+  id           String     @id @default(cuid())
+  address      String     @unique
+  name         String?
+  role         Role       @default(INVESTOR)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  referralCode String?    @unique
+  referrals    Referral[] @relation("Referrer")
 }
 
 model Referral {
   id              String   @id @default(cuid())
   referrerAddress String
-  referrer        User     @relation("Referrer", fields: [referrerAddress], references: [address])
   investorAddress String
   villaId         String
   amountSol       Float
   commissionSol   Float
-  status          String   @default("COMPLETED") // PENDING, COMPLETED
+  status          String   @default("COMPLETED")
   txHash          String?  @unique
   createdAt       DateTime @default(now())
+  referrer        User     @relation("Referrer", fields: [referrerAddress], references: [address])
 }
 
 enum Role {

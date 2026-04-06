@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
 import { createV1, mintV1, TokenStandard, mplTokenMetadata } from '@metaplex-foundation/mpl-token-metadata';
+import { setComputeUnitPrice } from '@metaplex-foundation/mpl-toolbox';
 import { keypairIdentity, generateSigner, percentAmount, createGenericFileFromBrowserFile, createGenericFile } from '@metaplex-foundation/umi';
 import { irysUploader } from '@metaplex-foundation/umi-uploader-irys';
 import bs58 from 'bs58';
@@ -67,7 +68,7 @@ export async function POST(req: Request) {
 
     const isMainnet = network === 'mainnet';
     const rpcUrl = isMainnet
-      ? 'https://solana-rpc.publicnode.com'
+      ? 'https://api.mainnet-beta.solana.com' // Switch to official RPC
       : 'https://rpc.ankr.com/solana_devnet';
 
     // Load private key
@@ -120,16 +121,27 @@ export async function POST(req: Request) {
 
     let assetUri = '';
     if (file) {
-      console.log(`[Deploy NFT] Uploading asset binary to Irys...`);
-      const buffer = await file.arrayBuffer();
-      const genericFile = createGenericFile(
-        new Uint8Array(buffer),
-        file.name,
-        { contentType: file.type }
-      );
-      const [uri] = await umi.uploader.upload([genericFile]);
-      assetUri = uri;
-      console.log(`[Deploy NFT] Asset uploaded successfully: ${assetUri}`);
+      let retries = 3;
+      while (retries > 0) {
+        try {
+          console.log(`[Deploy NFT] Uploading asset binary to Irys (Attempt ${4 - retries})...`);
+          const buffer = await file.arrayBuffer();
+          const genericFile = createGenericFile(
+            new Uint8Array(buffer),
+            file.name,
+            { contentType: file.type }
+          );
+          const [uri] = await umi.uploader.upload([genericFile]);
+          assetUri = uri;
+          console.log(`[Deploy NFT] Asset uploaded successfully: ${assetUri}`);
+          break;
+        } catch (err: any) {
+          retries--;
+          console.error(`[Deploy NFT] Asset upload failed: ${err.message}. Retries left: ${retries}`);
+          if (retries === 0) throw err;
+          await new Promise(r => setTimeout(r, 2000)); // Wait 2s before retry
+        }
+      }
     }
 
     // Build metadata URI JSON
@@ -146,15 +158,31 @@ export async function POST(req: Request) {
       },
     };
 
-    console.log(`[Deploy NFT] Uploading Metadata JSON to Irys...`);
-    const metadataUri = await umi.uploader.uploadJson(metadataJson);
-    console.log(`[Deploy NFT] Metadata uploaded successfully: ${metadataUri}`);
+    let metadataUri = '';
+    let metaRetries = 3;
+    while (metaRetries > 0) {
+      try {
+        console.log(`[Deploy NFT] Uploading Metadata JSON to Irys (Attempt ${4 - metaRetries})...`);
+        metadataUri = await umi.uploader.uploadJson(metadataJson);
+        console.log(`[Deploy NFT] Metadata uploaded successfully: ${metadataUri}`);
+        break;
+      } catch (err: any) {
+        metaRetries--;
+        console.error(`[Deploy NFT] Metadata upload failed: ${err.message}. Retries left: ${metaRetries}`);
+        if (metaRetries === 0) throw err;
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
 
     // Create SFT
     const mint = generateSigner(umi);
     const tokenSupply = supply || 40000;
 
-    console.log(`[Deploy NFT] Creating SFT on Chain: ${name} (${symbol}), supply: ${tokenSupply}`);
+    // Use priority fees for Mainnet to avoid "block height exceeded" errors
+    // Increased to 1,200,000 for better reliability during congestion
+    const microLamports = isMainnet ? 1_200_000 : 10_000;
+
+    console.log(`[Deploy NFT] Creating SFT on Chain: ${name} (${symbol}), supply: ${tokenSupply} with ${microLamports} microLamports priority fee`);
 
     await createV1(umi, {
       mint,
@@ -165,7 +193,9 @@ export async function POST(req: Request) {
       sellerFeeBasisPoints: percentAmount(0),
       decimals: 0,
       tokenStandard: TokenStandard.FungibleAsset,
-    }).sendAndConfirm(umi);
+    })
+    .prepend(setComputeUnitPrice(umi, { microLamports }))
+    .sendAndConfirm(umi);
 
     const mintAddress = mint.publicKey.toString();
     console.log(`[Deploy NFT] Mint created: ${mintAddress}`);
@@ -177,7 +207,9 @@ export async function POST(req: Request) {
       amount: tokenSupply,
       tokenOwner: umi.identity.publicKey,
       tokenStandard: TokenStandard.FungibleAsset,
-    }).sendAndConfirm(umi);
+    })
+    .prepend(setComputeUnitPrice(umi, { microLamports }))
+    .sendAndConfirm(umi);
 
     console.log(`[Deploy NFT] Minted ${tokenSupply} tokens to ${walletAddress}. Syncing with Database...`);
 
