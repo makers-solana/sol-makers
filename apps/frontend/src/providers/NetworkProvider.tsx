@@ -12,7 +12,7 @@ const NetworkContext = createContext<NetworkContextType | undefined>(undefined);
 export const NetworkProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [network, setNetworkState] = useState<SolanaNetwork>(() => {
     const saved = localStorage.getItem('solana-network');
-    return (saved === 'mainnet' || saved === 'devnet') ? saved : 'devnet';
+    return (saved === 'mainnet') ? saved : 'mainnet'; // Force mainnet as default
   });
 
   const setNetwork = (newNetwork: SolanaNetwork) => {

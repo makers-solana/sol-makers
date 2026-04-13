@@ -153,6 +153,8 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
              sqm: v.sqm,
              occupancyStatus: v.occupancyStatus || 'Active',
              images: images,
+             mediaType: v.mediaType || 'image',
+             network: v.network || 'mainnet',
              description: v.description,
              chain: v.chain || 'solana'
            };
@@ -174,7 +176,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
 
   const calculateReturn = (villa: any) => {
     const yieldRate = parseFloat(villa.apy) / 100;   // villa objects use .apy, not .ery
-    const pricePerShareSol = 0.02;
+    const pricePerShareSol = (villa.pricePerShareUsd || 100) / solPriceUsd;
     return `${(investAmount * pricePerShareSol * yieldRate).toLocaleString(undefined, { maximumFractionDigits: 4 })} SOL`;
   };
 
@@ -193,7 +195,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
     try {
       console.log("Requesting Smart Transaction Builder from Backend...");
       
-      const pricePerShareSol = 0.02;
+      const pricePerShareSol = (selectedVilla.pricePerShareUsd || 100) / solPriceUsd;
       const totalLamports = Math.floor(investAmount * pricePerShareSol * 1e9);
       
       // Validate referral: must be valid length (6 chars OR >30 chars) AND not self-referral
@@ -365,45 +367,6 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
           </button>
 
           <div className="nav-actions-desktop" style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <div style={{ display: 'flex', backgroundColor: 'var(--card-border)', padding: '4px', borderRadius: '16px' }}>
-              <button
-                onClick={() => setNetwork('devnet')}
-                style={{
-                  padding: '8px 20px',
-                  borderRadius: '12px',
-                  border: 'none',
-                  background: network === 'devnet' ? 'linear-gradient(90deg, #9945FF, #14F195)' : 'transparent',
-                  color: network === 'devnet' ? 'white' : 'var(--text-muted)',
-                  cursor: 'pointer',
-                  fontSize: '0.75rem',
-                  fontWeight: 800,
-                  letterSpacing: '0.05em',
-                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  boxShadow: network === 'devnet' ? '0 4px 12px rgba(153, 69, 255, 0.3)' : 'none'
-                }}
-              >
-                DEVNET
-              </button>
-              <button
-                onClick={() => setNetwork('mainnet')}
-                style={{
-                  padding: '8px 20px',
-                  borderRadius: '12px',
-                  border: 'none',
-                  background: network === 'mainnet' ? 'linear-gradient(90deg, #14F195, #9945FF)' : 'transparent',
-                  color: network === 'mainnet' ? 'white' : 'var(--text-muted)',
-                  cursor: 'pointer',
-                  fontSize: '0.75rem',
-                  fontWeight: 800,
-                  letterSpacing: '0.05em',
-                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  boxShadow: network === 'mainnet' ? '0 4px 12px rgba(20, 241, 149, 0.3)' : 'none'
-                }}
-              >
-                MAINNET
-              </button>
-            </div>
-
             <div style={{ display: 'flex', backgroundColor: 'var(--card-border)', padding: '4px', borderRadius: '12px' }}>
               <button
                 onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
@@ -470,19 +433,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
           <a href={solanaConnected && wallet?.adapter.name ? `https://api.thehistorymaker.io/?wallet=${encodeURIComponent(wallet.adapter.name)}` : "https://api.thehistorymaker.io/"} style={{ color: 'var(--text-color)', textDecoration: 'none', fontSize: '1.25rem', fontWeight: 700 }}>Asset & Earning</a>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.1em' }}>NETWORK</span>
-          <div style={{ display: 'flex', backgroundColor: 'var(--card-border)', padding: '4px', borderRadius: '16px', width: 'fit-content' }}>
-            <button
-              onClick={() => { setNetwork('devnet'); setIsMobileMenuOpen(false); }}
-              style={{ padding: '8px 16px', borderRadius: '12px', border: 'none', background: network === 'devnet' ? 'linear-gradient(90deg, #9945FF, #14F195)' : 'transparent', color: network === 'devnet' ? 'white' : 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800 }}
-            >DEVNET</button>
-            <button
-              onClick={() => { setNetwork('mainnet'); setIsMobileMenuOpen(false); }}
-              style={{ padding: '8px 16px', borderRadius: '12px', border: 'none', background: network === 'mainnet' ? 'linear-gradient(90deg, #14F195, #9945FF)' : 'transparent', color: network === 'mainnet' ? 'white' : 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800 }}
-            >MAINNET</button>
-          </div>
-        </div>
+
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.1em' }}>THEME</span>
@@ -507,8 +458,8 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
         />
       )}
 
-      <main className="dashboard-grid">
-        {villas.map((villa) => {
+      <main className="marketplace-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '2.5rem', marginBottom: '80px' }}>
+        {villas.filter(v => v.network === network).map((villa) => {
           const tokensSold = villa.tokensSold || 0;
 
           return (
@@ -519,7 +470,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
               overflow: 'hidden'
             }}>
               <div style={{ position: 'relative', height: '240px', backgroundColor: 'rgba(0,0,0,0.2)' }}>
-                {(villa.images?.[0]?.endsWith('.mp4') || villa.images?.[0]?.includes('irys.xyz') || villa.images?.[0]?.includes('arweave.net')) ? (
+                {villa.mediaType === 'video' ? (
                   <video
                     src={villa.images[0]}
                     style={{ width: '100%', height: '100%', objectFit: 'contain' }}
@@ -533,6 +484,9 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
                 )}
                 <div className="glass-badge glass-badge--violet" style={{ position: 'absolute', top: '16px', left: '16px', fontSize: '0.75rem', color: '#1a1a1a', fontWeight: 800 }}>
                   <span className="glass-badge__dot"></span> APY {villa.apy}%
+                </div>
+                <div style={{ position: 'absolute', top: '16px', right: '16px', padding: '4px 10px', borderRadius: '8px', background: villa.network === 'mainnet' ? 'linear-gradient(90deg, #9945FF, #14F195)' : 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', fontSize: '0.6rem', color: 'white', fontWeight: 800, textTransform: 'uppercase' }}>
+                  {villa.network}
                 </div>
                 <div className="glass-badge glass-badge--aqua" style={{ position: 'absolute', bottom: '16px', right: '16px', fontSize: '0.75rem', background: 'var(--accent-aqua)', color: '#000', border: 'none' }}>
                   {villa.chain === 'solana' ? `◎ ${(villa.pricePerShareUsd / solPriceUsd).toFixed(3)} / NFT` : `$${villa.pricePerShareUsd} / token`}
@@ -627,7 +581,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2.5rem' }}>
                   <div>
-                    {(selectedVilla.images?.[0]?.endsWith('.mp4') || selectedVilla.images?.[0]?.includes('irys.xyz') || selectedVilla.images?.[0]?.includes('arweave.net')) ? (
+                    {selectedVilla.mediaType === 'video' ? (
                       <video
                         src={selectedVilla.images[0]}
                         style={{ width: '100%', borderRadius: '24px', marginBottom: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}

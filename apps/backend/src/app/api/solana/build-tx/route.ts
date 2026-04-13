@@ -53,7 +53,7 @@ export async function POST(req: Request) {
     // Choose connection based on network
     const connectionUrl = isMainnet 
       ? 'https://solana-rpc.publicnode.com'
-      : 'https://rpc.ankr.com/solana_devnet';
+      : 'https://api.devnet.solana.com';
     
     const connection = new Connection(connectionUrl, 'confirmed');
 
@@ -83,7 +83,7 @@ export async function POST(req: Request) {
     // The NFT is distributed from the Server Hot Wallet (treasuryPubkey)
     const treasuryPubkey = treasuryKeypair.publicKey;
     // The SOL purchase funds are directed exclusively to the Multisig Vault
-    const vaultPubkey = new PublicKey("5xKeGY3yZnMV3cz8MLqc9sjrbjH12yLbynB59aMpSvKz");
+    const vaultPubkey = new PublicKey("35wVymVGdjG3wVfG7XgFarmnK5bp6xDZ3QimpHzDVZqv");
 
     const buyerPubkey = new PublicKey(buyerAddress);
     const mintPubkey = new PublicKey(mintAddress);

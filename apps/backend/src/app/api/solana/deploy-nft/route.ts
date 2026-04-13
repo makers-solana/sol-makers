@@ -21,7 +21,7 @@ export const dynamic = 'force-dynamic';
 // Wallets authorized to deploy NFTs
 // Treasury wallet also receives payments & holds unsold tokens
 const ALLOWED_DEPLOYERS = [
-  '5xKeGY3yZnMV3cz8MLqc9sjrbjH12yLbynB59aMpSvKz', // Treasury (Mainnet) — receives payments & deploys
+  '35wVymVGdjG3wVfG7XgFarmnK5bp6xDZ3QimpHzDVZqv', // Treasury (Mainnet) — receives payments & deploys
   'EUWDRpaq8yc5X7paoA7GMfLieL8qUfB3MTm744v7kTim', // Deployer (Mainnet) — deploy only, not treasury receiver
   '8bw4qgyQnChaa91hxUViB8gMLjmC39UvFsPMydwRmUN8', // Devnet
 ];
@@ -69,7 +69,7 @@ export async function POST(req: Request) {
     const isMainnet = network === 'mainnet';
     const rpcUrl = isMainnet
       ? 'https://api.mainnet-beta.solana.com' // Switch to official RPC
-      : 'https://rpc.ankr.com/solana_devnet';
+      : 'https://api.devnet.solana.com';
 
     // Load private key
     const privateKeyString = isMainnet
@@ -144,8 +144,9 @@ export async function POST(req: Request) {
       }
     }
 
-    // Build metadata URI JSON
-    const metadataJson = {
+    // Build metadata URI JSON according to Metaplex standard for videos/images
+    const isVideo = file?.type?.startsWith('video');
+    const metadataJson: any = {
       name,
       symbol,
       description: description || '',
@@ -153,10 +154,15 @@ export async function POST(req: Request) {
       external_url: 'https://thehistorymaker.io',
       attributes: attributesRaw || [],
       properties: {
-        files: assetUri ? [{ uri: assetUri, type: file?.type || 'image/png' }] : [],
-        category: file?.type?.startsWith('video') ? 'video' : 'image',
+        files: assetUri ? [{ uri: assetUri, type: file?.type || (isVideo ? 'video/mp4' : 'image/png') }] : [],
+        category: isVideo ? 'video' : 'image',
       },
     };
+
+    // If it's a video, add animation_url for wallet/explorer support
+    if (isVideo) {
+      metadataJson.animation_url = assetUri;
+    }
 
     let metadataUri = '';
     let metaRetries = 3;
@@ -239,6 +245,8 @@ export async function POST(req: Request) {
           totalValue: totalValue,
           images: [assetUri], // Primary image is the Arweave asset URI
           nftAddress: mintAddress,
+          mediaType: isVideo ? "video" : "image",
+          network: network,
           chain: "solana",
           totalTokens: supply,
           tokensSold: 0,

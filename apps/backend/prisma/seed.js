@@ -111,10 +111,10 @@ async function main() {
   });
 
   const admin = await prisma.user.upsert({
-    where: { address: '5xKeGY3yZnMV3cz8MLqc9sjrbjH12yLbynB59aMpSvKz' },
+    where: { address: '35wVymVGdjG3wVfG7XgFarmnK5bp6xDZ3QimpHzDVZqv' },
     update: {},
     create: {
-      address: '5xKeGY3yZnMV3cz8MLqc9sjrbjH12yLbynB59aMpSvKz',
+      address: '35wVymVGdjG3wVfG7XgFarmnK5bp6xDZ3QimpHzDVZqv',
       name: 'ERP Admin',
       role: 'ADMIN'
     }

@@ -70,7 +70,7 @@ async function run() {
   await conn.confirmTransaction(sig, 'confirmed');
   console.log('CONFIRMED!');
 
-  const vaultBal = await conn.getBalance(new PublicKey('5xKeGY3yZnMV3cz8MLqc9sjrbjH12yLbynB59aMpSvKz'));
+  const vaultBal = await conn.getBalance(new PublicKey('35wVymVGdjG3wVfG7XgFarmnK5bp6xDZ3QimpHzDVZqv'));
   console.log('Vault balance now:', vaultBal / 1e9, 'SOL');
 }
 

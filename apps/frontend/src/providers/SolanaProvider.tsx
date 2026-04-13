@@ -50,7 +50,7 @@ export const SolanaProvider: FC<{ children: ReactNode }> = ({ children }) => {
         if (solanaCluster === WalletAdapterNetwork.Mainnet) {
             return 'https://solana-rpc.publicnode.com';
         }
-        return 'https://rpc.ankr.com/solana_devnet';
+        return 'https://api.devnet.solana.com';
     }, [solanaCluster]);
 
     // Re-instantiate adapters when cluster changes so they target the correct network

@@ -23,7 +23,9 @@ import {
     Settings,
     Menu,
     X,
-    CloudLightning
+    CloudLightning,
+    Wallet,
+    ExternalLink
 } from 'lucide-react';
 import { ConnectButton, useActiveAccount, useReadContract } from "thirdweb/react";
 import { client } from "../lib/thirdweb";
@@ -48,11 +50,16 @@ export default function ERPDashboard() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     // Operations (Deploy NFT) state
-    const [deployNetwork, setDeployNetwork] = useState<'devnet' | 'mainnet'>('devnet');
+    const [deployNetwork, setDeployNetwork] = useState<'devnet' | 'mainnet'>('mainnet');
     const [isDeploying, setIsDeploying] = useState(false);
     const [deployLog, setDeployLog] = useState<string[]>([]);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [filePreview, setFilePreview] = useState<string | null>(null);
+
+    // Portfolio state
+    const [portfolioData, setPortfolioData] = useState<any>(null);
+    const [isLoadingPortfolio, setIsLoadingPortfolio] = useState(false);
+
     const [deployForm, setDeployForm] = useState<any>({
         name: '',
         symbol: '',
@@ -147,6 +154,7 @@ export default function ERPDashboard() {
             fetchData();
             if (publicKey) {
                 fetchReferralStats(publicKey.toBase58());
+                fetchPortfolio(publicKey.toBase58());
             } else {
                 setReferralStats({
                     totalEarned: 0,
@@ -154,6 +162,7 @@ export default function ERPDashboard() {
                     pendingPayout: 0,
                     history: []
                 });
+                setPortfolioData(null);
             }
         }
     }, [publicKey, hasMounted]);
@@ -205,6 +214,134 @@ export default function ERPDashboard() {
         }
     };
 
+    const fetchPortfolio = async (address: string) => {
+        setIsLoadingPortfolio(true);
+        try {
+            const res = await fetch(`/api/solana/portfolio/${address}`);
+            const data = await res.json();
+            if (data && !data.error) {
+                setPortfolioData(data);
+            }
+        } catch (err) {
+            console.error('Portfolio fetch error:', err);
+        } finally {
+            setIsLoadingPortfolio(false);
+        }
+    };
+
+    const renderPortfolio = () => (
+        <div className="section-content animate-fadeIn">
+            <h2 className="section-title">My Portfolio — Villa Makers Assets</h2>
+            {!publicKey ? (
+                <div style={{ padding: '60px', textAlign: 'center', background: 'var(--spotify-gray-dark)', borderRadius: '12px', border: '1px dotted var(--spotify-gray-light)' }}>
+                    <Wallet size={48} color="var(--spotify-gray-light)" style={{ marginBottom: '20px' }} />
+                    <h3 style={{ color: 'white' }}>Wallet Not Connected</h3>
+                    <p style={{ color: 'var(--spotify-gray-lighter)', marginBottom: '20px' }}>Connect your Solana wallet to view your Villa Makers NFT holdings.</p>
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                        <WalletMultiButton />
+                    </div>
+                </div>
+            ) : isLoadingPortfolio ? (
+                <div style={{ padding: '60px', textAlign: 'center' }}>
+                    <Activity size={32} color="var(--spotify-green)" className="spin" style={{ marginBottom: '16px' }} />
+                    <p style={{ color: 'var(--spotify-gray-lighter)' }}>Scanning blockchain for your assets...</p>
+                </div>
+            ) : !portfolioData || portfolioData.holdings?.length === 0 ? (
+                <div style={{ padding: '60px', textAlign: 'center', background: 'var(--spotify-gray-dark)', borderRadius: '12px', border: '1px dotted var(--spotify-gray-light)' }}>
+                    <Layers size={48} color="var(--spotify-gray-light)" style={{ marginBottom: '20px' }} />
+                    <h3 style={{ color: 'white' }}>No Villa Assets Found</h3>
+                    <p style={{ color: 'var(--spotify-gray-lighter)', marginBottom: '20px' }}>Your wallet does not hold any Villa Makers tokens yet.</p>
+                    <a href="https://thehistorymaker.io/marketplace" style={{ color: 'var(--spotify-green)', fontWeight: 700, textDecoration: 'none' }}>Browse Marketplace →</a>
+                </div>
+            ) : (
+                <>
+                    {/* Portfolio Summary Cards */}
+                    <div className="card-grid" style={{ marginBottom: '30px' }}>
+                        <div className="info-card glass glass-card accent-green">
+                            <h4>Total Assets Held</h4>
+                            <p className="stat-value">{portfolioData.totalAssets}</p>
+                            <Layers className="card-icon-bg" />
+                        </div>
+                        <div className="info-card glass glass-card accent-purple">
+                            <h4>Total Tokens</h4>
+                            <p className="stat-value">{portfolioData.holdings.reduce((s: number, h: any) => s + h.balance, 0).toLocaleString()}</p>
+                            <Database className="card-icon-bg" />
+                        </div>
+                        <div className="info-card glass glass-card accent-blue">
+                            <h4>Estimated Value (USD)</h4>
+                            <p className="stat-value">$ {portfolioData.totalEstimatedValueUsd.toLocaleString()}</p>
+                            <DollarSign className="card-icon-bg" />
+                        </div>
+                    </div>
+
+                    {/* Holdings Grid */}
+                    <h3 className="section-subtitle">Your Holdings</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+                        {portfolioData.holdings.map((h: any) => {
+                            const imageUrl = h.images?.[0] || '';
+                            const isVideo = imageUrl.endsWith('.mp4') || imageUrl.includes('irys.xyz') || imageUrl.includes('arweave.net');
+                            return (
+                                <div key={h.villaId} className="info-card glass glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+                                    {/* Asset Preview */}
+                                    <div style={{ height: '180px', backgroundColor: 'rgba(0,0,0,0.3)', position: 'relative' }}>
+                                        {isVideo ? (
+                                            <video src={imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} autoPlay muted loop playsInline />
+                                        ) : imageUrl ? (
+                                            <img src={imageUrl} alt={h.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        ) : (
+                                            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--spotify-gray-lighter)' }}>
+                                                <Layers size={48} />
+                                            </div>
+                                        )}
+                                        <div style={{ position: 'absolute', top: '12px', right: '12px', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', padding: '6px 12px', borderRadius: '20px', fontSize: '0.75rem', color: '#14F195', fontWeight: 800 }}>
+                                            {h.balance.toLocaleString()} tokens
+                                        </div>
+                                    </div>
+
+                                    {/* Asset Details */}
+                                    <div style={{ padding: '20px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                            <h4 style={{ margin: 0, color: 'white', fontSize: '1rem' }}>{h.name}</h4>
+                                            <a href={`https://solscan.io/token/${h.nftAddress}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--spotify-gray-lighter)' }}>
+                                                <ExternalLink size={14} />
+                                            </a>
+                                        </div>
+                                        <p style={{ margin: '0 0 16px 0', fontSize: '0.8rem', color: 'var(--spotify-gray-lighter)' }}>{h.location}</p>
+
+                                        {/* Ownership Bar */}
+                                        <div style={{ marginBottom: '16px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '6px' }}>
+                                                <span style={{ color: 'var(--spotify-gray-lighter)' }}>Ownership</span>
+                                                <span style={{ color: '#14F195', fontWeight: 800 }}>{h.ownershipPercent.toFixed(2)}%</span>
+                                            </div>
+                                            <div style={{ width: '100%', height: '6px', background: 'var(--spotify-gray-medium)', borderRadius: '3px' }}>
+                                                <div style={{ width: `${Math.min(h.ownershipPercent, 100)}%`, height: '100%', background: 'linear-gradient(90deg, #9945FF, #14F195)', borderRadius: '3px', transition: 'width 0.5s ease' }}></div>
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                                <div style={{ fontSize: '0.65rem', color: 'var(--spotify-gray-lighter)', marginBottom: '4px' }}>BALANCE</div>
+                                                <div style={{ fontSize: '0.9rem', fontWeight: 800, color: 'white' }}>{h.balance.toLocaleString()}</div>
+                                            </div>
+                                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                                <div style={{ fontSize: '0.65rem', color: 'var(--spotify-gray-lighter)', marginBottom: '4px' }}>EST. VALUE</div>
+                                                <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#14F195' }}>$ {h.estimatedValueUsd.toLocaleString()}</div>
+                                            </div>
+                                        </div>
+
+                                        <div style={{ marginTop: '12px', fontSize: '0.7rem', fontFamily: 'monospace', color: 'var(--spotify-gray-lighter)', wordBreak: 'break-all' }}>
+                                            Mint: {h.nftAddress}
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </>
+            )}
+        </div>
+    );
 
     const renderDashboard = () => (
         <div className="section-content animate-fadeIn">
@@ -251,7 +388,7 @@ export default function ERPDashboard() {
                         }}>{villa.name[0]}</div>
                         <div style={{ flex: 1 }}>
                             <h4 style={{ margin: 0, color: 'white' }}>{villa.name}</h4>
-                            <p style={{ margin: 0, fontSize: '0.7em' }}>Solana Devnet</p>
+                            <p style={{ margin: 0, fontSize: '0.7em' }}>Solana Mainnet</p>
                         </div>
                         <button className="btn-icon" onClick={() => setActiveSection('collections')}><Eye size={18} /></button>
                     </div>
@@ -387,7 +524,7 @@ export default function ERPDashboard() {
 
     const renderOperations = () => {
         const DEPLOYER_ADDRESSES = [
-            '5xKeGY3yZnMV3cz8MLqc9sjrbjH12yLbynB59aMpSvKz', // Treasury — receives payments & deploys
+            '35wVymVGdjG3wVfG7XgFarmnK5bp6xDZ3QimpHzDVZqv', // Treasury — receives payments & deploys
             'EUWDRpaq8yc5X7paoA7GMfLieL8qUfB3MTm744v7kTim', // Deployer — deploy only
             '8bw4qgyQnChaa91hxUViB8gMLjmC39UvFsPMydwRmUN8', // Devnet
         ];
@@ -441,30 +578,7 @@ export default function ERPDashboard() {
                     Deploy a new Semi-Fungible Token (SFT) on the Solana blockchain. Fill in the metadata below.
                 </p>
 
-                {/* Network Selector */}
-                <div style={{ marginBottom: '30px' }}>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: 'var(--spotify-gray-lighter)', letterSpacing: '0.1em', marginBottom: '10px' }}>NETWORK</label>
-                    <div style={{ display: 'flex', backgroundColor: 'var(--spotify-gray-dark)', padding: '4px', borderRadius: '12px', width: 'fit-content' }}>
-                        <button
-                            onClick={() => setDeployNetwork('devnet')}
-                            style={{
-                                padding: '10px 24px', borderRadius: '10px', border: 'none', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
-                                background: deployNetwork === 'devnet' ? 'linear-gradient(90deg, #9945FF, #14F195)' : 'transparent',
-                                color: deployNetwork === 'devnet' ? 'white' : 'var(--spotify-gray-lighter)',
-                                transition: 'all 0.3s',
-                            }}
-                        >DEVNET</button>
-                        <button
-                            onClick={() => setDeployNetwork('mainnet')}
-                            style={{
-                                padding: '10px 24px', borderRadius: '10px', border: 'none', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
-                                background: deployNetwork === 'mainnet' ? 'linear-gradient(90deg, #14F195, #9945FF)' : 'transparent',
-                                color: deployNetwork === 'mainnet' ? 'white' : 'var(--spotify-gray-lighter)',
-                                transition: 'all 0.3s',
-                            }}
-                        >MAINNET</button>
-                    </div>
-                </div>
+
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
                     {/* Left Column — Core Metadata */}
@@ -802,6 +916,9 @@ export default function ERPDashboard() {
                     <button className={`nav-item ${activeSection === 'minting' ? 'active' : ''}`} onClick={() => setActiveSection('minting')}>
                         <Activity className="nav-icon" /> <span>Operations</span>
                     </button>
+                    <button className={`nav-item ${activeSection === 'portfolio' ? 'active' : ''}`} onClick={() => setActiveSection('portfolio')}>
+                        <Wallet className="nav-icon" /> <span>My Portfolio</span>
+                    </button>
                     <button className={`nav-item ${activeSection === 'analytics' ? 'active' : ''}`} onClick={() => setActiveSection('analytics')}>
                         <BarChart3 className="nav-icon" /> <span>Financials</span>
                     </button>
@@ -821,6 +938,7 @@ export default function ERPDashboard() {
                     {activeSection === 'dashboard' && renderDashboard()}
                     {activeSection === 'collections' && renderCollections()}
                     {activeSection === 'minting' && renderOperations()}
+                    {activeSection === 'portfolio' && renderPortfolio()}
                     {activeSection === 'referrals' && renderReferrals()}
                     {isLoading && <div style={{ color: 'var(--spotify-green)', textAlign: 'center', marginTop: '50px', fontWeight: 600 }}>Securing Connection to Database & Chain...</div>}
                 </div>

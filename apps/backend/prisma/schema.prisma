@@ -17,6 +17,8 @@ model Villa {
   pricePerShare   Float
   totalValue      Float
   images          String[]
+  mediaType       String           @default("image")
+  network         String           @default("mainnet")
   nftAddress      String?          @unique
   availableShares Int              @default(100)
   chain           String?          @default("ethereum")
