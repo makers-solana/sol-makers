@@ -2,9 +2,7 @@ import { NextResponse } from 'next/server';
 import { Connection, PublicKey, Transaction, SystemProgram, Keypair } from '@solana/web3.js';
 import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountIdempotentInstruction } from '@solana/spl-token';
 import bs58 from 'bs58';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': 'https://thehistorymaker.io',
@@ -14,6 +12,24 @@ const corsHeaders = {
 };
 
 export const dynamic = 'force-dynamic';
+
+const MAX_TOKENS_PER_TX = 100;
+const REFERRAL_PERCENT = 10;
+// Acceptable price slippage: ±20% tolerance (protects against rapid SOL price moves)
+const PRICE_TOLERANCE = 0.20;
+
+async function getSolPriceUsd(): Promise<number> {
+  try {
+    const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd', {
+      next: { revalidate: 60 },
+    });
+    const data = await res.json();
+    return data?.solana?.usd ?? 150;
+  } catch {
+    console.warn('[build-tx] Failed to fetch SOL price, using fallback $150');
+    return 150;
+  }
+}
 
 export async function OPTIONS() {
   return new Response(null, {
@@ -25,44 +41,119 @@ export async function OPTIONS() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { buyerAddress, mintAddress, amountTokens, totalLamports, referralAddress, referralLamports, network } = body;
+    const { buyerAddress, mintAddress, amountTokens, totalLamports, referralAddress, network } = body;
 
-    if (!buyerAddress || !mintAddress || !amountTokens || !totalLamports || !network) {
+    // ── 1. Validate required fields ────────────────────────────────────────
+    if (!buyerAddress || !mintAddress || !amountTokens || !network) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400, headers: corsHeaders });
     }
 
-    let actualReferralAddress = referralAddress;
-    
-    // If referralAddress is a short code (6 characters), look it up
-    if (referralAddress && referralAddress.length === 6) {
-      const user = await prisma.user.findUnique({
-        where: { referralCode: referralAddress },
-      });
-      if (user && user.address) {
-        actualReferralAddress = user.address;
-      } else {
-        console.warn(`Referral code ${referralAddress} not found in DB`);
-        actualReferralAddress = null; // invalid code, ignore referral
+    // Validate network value
+    if (!['mainnet', 'devnet'].includes(network)) {
+      return NextResponse.json({ error: 'Invalid network. Must be mainnet or devnet.' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Validate amountTokens bounds
+    const parsedAmount = parseInt(amountTokens);
+    if (!Number.isInteger(parsedAmount) || parsedAmount <= 0 || parsedAmount > MAX_TOKENS_PER_TX) {
+      return NextResponse.json(
+        { error: `Invalid token amount. Must be between 1 and ${MAX_TOKENS_PER_TX}.` },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
+    // Validate mintAddress is a valid Solana PublicKey
+    let mintPubkey: PublicKey;
+    try {
+      mintPubkey = new PublicKey(mintAddress);
+    } catch {
+      return NextResponse.json({ error: 'Invalid mintAddress.' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Validate buyerAddress
+    let buyerPubkey: PublicKey;
+    try {
+      buyerPubkey = new PublicKey(buyerAddress);
+    } catch {
+      return NextResponse.json({ error: 'Invalid buyerAddress.' }, { status: 400, headers: corsHeaders });
+    }
+
+    // ── 2. Fetch Villa price from database ────────────────────────────────
+    const villa = await prisma.villa.findUnique({
+      where: { nftAddress: mintAddress },
+      select: { pricePerShare: true, availableShares: true },
+    });
+
+    if (!villa) {
+      return NextResponse.json({ error: 'Villa not found for given mintAddress.' }, { status: 404, headers: corsHeaders });
+    }
+
+    if (villa.availableShares < parsedAmount) {
+      return NextResponse.json({ error: 'Not enough shares available.' }, { status: 400, headers: corsHeaders });
+    }
+
+    // ── 3. Calculate server-side price ────────────────────────────────────
+    const solPriceUsd = await getSolPriceUsd();
+    const pricePerShareSol = villa.pricePerShare / solPriceUsd;
+    const expectedLamports = Math.floor(parsedAmount * pricePerShareSol * 1e9);
+
+    // Validate the client-supplied totalLamports is within ±20% tolerance
+    if (totalLamports !== undefined) {
+      const parsedClientLamports = parseInt(totalLamports);
+      const lowerBound = Math.floor(expectedLamports * (1 - PRICE_TOLERANCE));
+      const upperBound = Math.ceil(expectedLamports * (1 + PRICE_TOLERANCE));
+      if (parsedClientLamports < lowerBound) {
+        console.warn(`[build-tx] Price manipulation attempt. Expected ~${expectedLamports}, got ${parsedClientLamports}`);
+        return NextResponse.json({ error: 'Insufficient payment amount.' }, { status: 400, headers: corsHeaders });
       }
     }
 
-    const finalReferralLamports = actualReferralAddress ? referralLamports : 0;
+    // Always use server-computed lamports
+    const finalTotalLamports = expectedLamports;
 
+    // ── 4. Calculate referral commission on server ────────────────────────
+    let actualReferralAddress: string | null = null;
+    if (referralAddress) {
+      if (referralAddress.length === 6) {
+        // Short code lookup
+        const user = await prisma.user.findUnique({ where: { referralCode: referralAddress } });
+        if (user?.address) {
+          actualReferralAddress = user.address;
+        } else {
+          console.warn(`[build-tx] Referral code '${referralAddress}' not found in DB — skipping referral.`);
+        }
+      } else {
+        // Full wallet address
+        try {
+          new PublicKey(referralAddress); // validate
+          actualReferralAddress = referralAddress;
+        } catch {
+          console.warn(`[build-tx] Invalid referral wallet address '${referralAddress}' — skipping referral.`);
+        }
+      }
+    }
+
+    const serverReferralLamports = actualReferralAddress
+      ? Math.floor(finalTotalLamports * REFERRAL_PERCENT / 100)
+      : 0;
+    const vaultLamports = finalTotalLamports - serverReferralLamports;
+
+    // Safety check: vault must always receive the majority
+    if (vaultLamports <= 0 || serverReferralLamports >= finalTotalLamports) {
+      return NextResponse.json({ error: 'Invalid referral lamport calculation.' }, { status: 400, headers: corsHeaders });
+    }
+
+    // ── 5. Setup Connection & Keypair ─────────────────────────────────────
     const isMainnet = network === 'mainnet';
-    
-    // Choose connection based on network
-    const connectionUrl = isMainnet 
-      ? 'https://solana-rpc.publicnode.com'
+    const connectionUrl = isMainnet
+      ? (process.env.MAINNET_RPC_URL || 'https://solana-rpc.publicnode.com')
       : 'https://api.devnet.solana.com';
-    
     const connection = new Connection(connectionUrl, 'confirmed');
 
-    // Load matching private key
-    // We expect process.env variables to be loaded safely
     const privateKeyString = isMainnet ? process.env.MAINNET_PRIVATE_KEY : process.env.DEVNET_PRIVATE_KEY;
     if (!privateKeyString) {
-      console.error(`Missing ${isMainnet ? 'MAINNET_PRIVATE_KEY' : 'DEVNET_PRIVATE_KEY'} in .env`);
-      return NextResponse.json({ error: 'Treasury private key not configured securely on server' }, { status: 500, headers: corsHeaders });
+      console.error(`[build-tx] Missing ${isMainnet ? 'MAINNET_PRIVATE_KEY' : 'DEVNET_PRIVATE_KEY'} in .env`);
+      return NextResponse.json({ error: 'Treasury private key not configured on server.' }, { status: 500, headers: corsHeaders });
     }
 
     let treasuryKeypair: Keypair;
@@ -74,98 +165,69 @@ export async function POST(req: Request) {
         treasuryKeypair = Keypair.fromSecretKey(bs58.decode(privateKeyString));
       }
     } catch (e) {
-      console.error('Failed to parse treasury private key:', e);
-      return NextResponse.json({ error: 'Invalid treasury key format in server config' }, { status: 500, headers: corsHeaders });
+      console.error('[build-tx] Failed to parse treasury private key:', e);
+      return NextResponse.json({ error: 'Invalid treasury key format in server config.' }, { status: 500, headers: corsHeaders });
     }
 
-
-
-    // The NFT is distributed from the Server Hot Wallet (treasuryPubkey)
     const treasuryPubkey = treasuryKeypair.publicKey;
-    // The SOL purchase funds are directed exclusively to the Multisig Vault
-    const vaultPubkey = new PublicKey("35wVymVGdjG3wVfG7XgFarmnK5bp6xDZ3QimpHzDVZqv");
+    const vaultPubkey = new PublicKey('3qvjpDu3wkvR11aAQAUTB3zxeyTyTUUDAT6wJXAK92hL');
 
-    const buyerPubkey = new PublicKey(buyerAddress);
-    const mintPubkey = new PublicKey(mintAddress);
+    console.log(`[build-tx] Buyer: ${buyerAddress}, Mint: ${mintAddress}, Tokens: ${parsedAmount}, Total: ${finalTotalLamports} lamports, Referral: ${serverReferralLamports} lamports`);
+
+    // ── 6. Build Transaction ──────────────────────────────────────────────
     const transaction = new Transaction();
 
-    // 1. Add SOL Transfers (Buyer -> Multisig Vault & Referral)
-    let finalSellerLamports = totalLamports;
-    if (actualReferralAddress && finalReferralLamports && finalReferralLamports > 0) {
+    // SOL Transfers: Buyer → Vault (90%) & Referrer (10%)
+    if (actualReferralAddress && serverReferralLamports > 0) {
       try {
         const referralPubkey = new PublicKey(actualReferralAddress);
-        finalSellerLamports = totalLamports - finalReferralLamports;
-        
         transaction.add(
-          SystemProgram.transfer({
-            fromPubkey: buyerPubkey,
-            toPubkey: vaultPubkey,
-            lamports: finalSellerLamports,
-          }),
-          SystemProgram.transfer({
-            fromPubkey: buyerPubkey,
-            toPubkey: referralPubkey,
-            lamports: finalReferralLamports,
-          })
+          SystemProgram.transfer({ fromPubkey: buyerPubkey, toPubkey: vaultPubkey, lamports: vaultLamports }),
+          SystemProgram.transfer({ fromPubkey: buyerPubkey, toPubkey: referralPubkey, lamports: serverReferralLamports }),
         );
       } catch (e) {
+        console.error('[build-tx] Failed to add referral transfer, falling back to full vault transfer:', e);
         transaction.add(
-          SystemProgram.transfer({
-            fromPubkey: buyerPubkey,
-            toPubkey: vaultPubkey,
-            lamports: totalLamports,
-          })
+          SystemProgram.transfer({ fromPubkey: buyerPubkey, toPubkey: vaultPubkey, lamports: finalTotalLamports }),
         );
       }
     } else {
       transaction.add(
-        SystemProgram.transfer({
-          fromPubkey: buyerPubkey,
-          toPubkey: vaultPubkey,
-          lamports: totalLamports,
-        })
+        SystemProgram.transfer({ fromPubkey: buyerPubkey, toPubkey: vaultPubkey, lamports: finalTotalLamports }),
       );
     }
 
-    // 2. Add SPL Token Transfer (Treasury -> Buyer)
+    // SPL Token Transfer: Treasury → Buyer (NFT/SFT)
     const treasuryATA = await getAssociatedTokenAddress(mintPubkey, treasuryPubkey);
     const buyerATA = await getAssociatedTokenAddress(mintPubkey, buyerPubkey);
 
     transaction.add(
-      createAssociatedTokenAccountIdempotentInstruction(
-        buyerPubkey, // payer
-        buyerATA,    // ata
-        buyerPubkey, // owner
-        mintPubkey   // mint
-      )
+      createAssociatedTokenAccountIdempotentInstruction(buyerPubkey, buyerATA, buyerPubkey, mintPubkey)
     );
 
-    // Transfer fractional asset assuming 0 decimals for our SFTs
     transaction.add(
-      createTransferInstruction(
-        treasuryATA, // source
-        buyerATA,    // destination
-        treasuryPubkey, // owner of source (treasury)
-        amountTokens, // amount
-      )
+      createTransferInstruction(treasuryATA, buyerATA, treasuryPubkey, parsedAmount)
     );
 
-    // 3. Set Blockhash and Fee Payer
+    // Set blockhash and fee payer
     const { blockhash } = await connection.getLatestBlockhash('finalized');
     transaction.recentBlockhash = blockhash;
     transaction.feePayer = buyerPubkey;
 
-    // 4. Parital Sign by Treasury
+    // Partial sign by Treasury (authorizes NFT transfer)
     transaction.partialSign(treasuryKeypair);
 
-    // Serialize to Base64 (requireAllSignatures MUST be false since buyer hasn't signed yet)
     const serializedTransaction = transaction.serialize({ requireAllSignatures: false });
     const base64Tx = serializedTransaction.toString('base64');
 
-    return NextResponse.json({ transaction: base64Tx }, { headers: corsHeaders });
+    return NextResponse.json({
+      transaction: base64Tx,
+      serverTotalLamports: finalTotalLamports,
+      serverReferralLamports: serverReferralLamports,
+    }, { headers: corsHeaders });
 
   } catch (error: any) {
-    console.error('Error building transaction:', error);
+    console.error('[build-tx] Unhandled error:', error);
     return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500, headers: corsHeaders });
   }
 }

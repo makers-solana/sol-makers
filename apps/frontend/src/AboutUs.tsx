@@ -79,7 +79,7 @@ const AboutUs = ({ onNavigate }: AboutUsProps) => {
                   ultra-wealthy. By fractionalizing assets, we open the door to everyone.
                 </p>
                 <p>
-                  Our protocol tracks <b>$19.4M</b> in TVL with an average <b>12.4% ARY</b>.
+                  Our protocol tracks <b>$19.4M</b> in TVL with an average <b>0.0044 ARY</b>.
                   Join 1,200+ global holders in the revolution of Real World Assets.
                 </p>
                 <p>

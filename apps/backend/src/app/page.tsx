@@ -524,8 +524,8 @@ export default function ERPDashboard() {
 
     const renderOperations = () => {
         const DEPLOYER_ADDRESSES = [
-            '35wVymVGdjG3wVfG7XgFarmnK5bp6xDZ3QimpHzDVZqv', // Treasury — receives payments & deploys
-            'EUWDRpaq8yc5X7paoA7GMfLieL8qUfB3MTm744v7kTim', // Deployer — deploy only
+            '3qvjpDu3wkvR11aAQAUTB3zxeyTyTUUDAT6wJXAK92hL', // Treasury — receives payments & deploys
+            'EdPsiCgZzq5QGwR8ttLhBzcg5WoNUUrZcPC9juGMJR9y', // Deployer — deploy only
             '8bw4qgyQnChaa91hxUViB8gMLjmC39UvFsPMydwRmUN8', // Devnet
         ];
 

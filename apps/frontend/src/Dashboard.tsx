@@ -146,7 +146,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
              nftAddress: v.nftAddress,
              pricePerShareUsd: v.pricePerShare || 100,
              apy: apy,
-             totalTokens: v.totalTokens || 40000,
+             totalTokens: v.totalTokens,
              tokensSold: v.tokensSold || 0,
              bedrooms: v.bedrooms,
              bathrooms: v.bathrooms,
@@ -470,7 +470,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
               overflow: 'hidden'
             }}>
               <div style={{ position: 'relative', height: '240px', backgroundColor: 'rgba(0,0,0,0.2)' }}>
-                {villa.mediaType === 'video' ? (
+                {(villa.mediaType === 'video' || villa.images[0]?.endsWith('.mp4')) ? (
                   <video
                     src={villa.images[0]}
                     style={{ width: '100%', height: '100%', objectFit: 'contain' }}
@@ -581,7 +581,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (page: string) 
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2.5rem' }}>
                   <div>
-                    {selectedVilla.mediaType === 'video' ? (
+                    {(selectedVilla.mediaType === 'video' || selectedVilla.images[0]?.endsWith('.mp4')) ? (
                       <video
                         src={selectedVilla.images[0]}
                         style={{ width: '100%', borderRadius: '24px', marginBottom: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}

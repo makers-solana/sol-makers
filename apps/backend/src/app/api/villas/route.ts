@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { Connection, PublicKey } from '@solana/web3.js';
 
-const prisma = new PrismaClient();
 
 const SOLANA_RPC = "https://solana-rpc.publicnode.com";
 const connection = new Connection(SOLANA_RPC);
-const TREASURY_WALLET_ADDRESS = 'EUWDRpaq8yc5X7paoA7GMfLieL8qUfB3MTm744v7kTim'; // Deployer Hot Wallet that holds the NFTs
+const TREASURY_WALLET_ADDRESS = 'EdPsiCgZzq5QGwR8ttLhBzcg5WoNUUrZcPC9juGMJR9y'; // Deployer Hot Wallet that holds the NFTs
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': 'https://thehistorymaker.io',
@@ -78,17 +77,17 @@ export async function GET() {
 
     // Transform data and fetch real-time supply
     const formattedVillas = await Promise.all(villas.map(async (v) => {
-      const liveTokensSold = await fetchTokenSupply(v.nftAddress);
+      const liveTokensSold = await fetchTokenSupply(v.nftAddress, v.tokensSold || 0);
       
       return {
         ...v,
         tokensSold: liveTokensSold,
-        totalTokens: 40000,
+        totalTokens: v.totalTokens,
         erp: {
           occupancy: v.occupancyStatus,
           nightlyRate: v.nightlyRate,
           apy: '0.0044%',
-          totalTokens: 40000,
+          totalTokens: v.totalTokens,
           tokensSold: liveTokensSold,
           nextPayout: '2024-04-10',
           maintenance: {

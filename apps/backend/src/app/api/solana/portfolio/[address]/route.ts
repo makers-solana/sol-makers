@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Connection, PublicKey } from '@solana/web3.js';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 
-const prisma = new PrismaClient();
 const SOLANA_RPC = 'https://solana-rpc.publicnode.com';
 const connection = new Connection(SOLANA_RPC);
 

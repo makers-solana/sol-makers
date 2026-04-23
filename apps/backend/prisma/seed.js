@@ -2,126 +2,112 @@ require('dotenv').config();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
+// Corrected NFT addresses and properties based on screenshot and on-chain data
+// Properties from screenshot: Bedrooms 2, Bathrooms 2, Land Size 150m2, Total Fractions 6250
+// Updated for actual .gif artwork downloaded from Arweave
 async function main() {
   // Clear existing villas to ensure only the specified assets are shown
   await prisma.villa.deleteMany({});
-  
+
+  const commonProps = {
+    pricePerShare: 100,
+    totalValue: 625000,
+    totalShares: 6250,
+    totalTokens: 6250,
+    tokensSold: 0,
+    bedrooms: 2,
+    bathrooms: 2,
+    sqm: 150,
+    occupancyStatus: 'Active',
+    ery: 12.5,
+    ary: 12.5,
+    legalStructure: 'FRACTIONAL_OWNERSHIP',
+    chain: 'solana',
+    network: 'mainnet',
+    mediaType: 'gif'
+  };
+
   const v1 = await prisma.villa.upsert({
-    where: { nftAddress: '43riPPJd8QwqRjbhJZKewMjbc4iKhnTGJR9Magk1BqKG' },
+    where: { nftAddress: 'GEUiSkny4QjNWcA75NTiVNGfF6yLS7eRgf5vMyNDH64t' },
     update: {},
     create: {
+      ...commonProps,
       id: 'v1',
       name: 'Villa Dreamland 1',
       location: 'Uluwatu, Bali',
       description: 'Premium fractionalized modern cliffside villa in Uluwatu, Bali.',
-      pricePerShare: 100,
-      totalValue: 4000000,
-      totalShares: 40000,
-      totalTokens: 40000,
-      tokensSold: 0,
-      bedrooms: 4,
-      bathrooms: 4,
-      sqm: 850,
-      occupancyStatus: 'Active',
-      ery: 12.5,
-      ary: 12.5,
-      legalStructure: 'FRACTIONAL_OWNERSHIP',
-      nftAddress: '43riPPJd8QwqRjbhJZKewMjbc4iKhnTGJR9Magk1BqKG',
-      chain: 'solana',
-      images: ['/assets/Villa 1.gif.mp4']
+      nftAddress: 'GEUiSkny4QjNWcA75NTiVNGfF6yLS7eRgf5vMyNDH64t',
+      images: ['/assets/Villa 1.gif']
     }
   });
 
   const v2 = await prisma.villa.upsert({
-    where: { nftAddress: 'AUsosPL4ymUkqzisoUAMAqKj2VMGhduBhsS3ZnS7VXEy' },
+    where: { nftAddress: 'B33PmfmuzKDK8iDBA4VXafAM3QHnVDvipFdEkoCpUDyF' },
     update: {},
     create: {
+      ...commonProps,
       id: 'v2',
       name: 'Villa Dreamland 2',
       location: 'Ubud, Bali',
       description: 'Luxury tropical jungle villa in Ubud.',
-      pricePerShare: 100,
-      totalValue: 4000000,
-      totalShares: 40000,
-      totalTokens: 40000,
-      tokensSold: 0,
-      bedrooms: 3,
-      bathrooms: 3,
-      sqm: 450,
-      occupancyStatus: 'Active',
-      ery: 9.2,
-      ary: 9.2,
-      legalStructure: 'FRACTIONAL_OWNERSHIP',
-      nftAddress: 'AUsosPL4ymUkqzisoUAMAqKj2VMGhduBhsS3ZnS7VXEy',
-      chain: 'solana',
-      images: ['/assets/Villa 2.gif.mp4']
+      nftAddress: 'B33PmfmuzKDK8iDBA4VXafAM3QHnVDvipFdEkoCpUDyF',
+      images: ['/assets/Villa 2.gif']
     }
   });
 
   const v3 = await prisma.villa.upsert({
-    where: { nftAddress: 'BNGXwuS1Wg6SG9Dpai8pgCXUXbYJAvyFiHEg8y4WKhMT' },
+    where: { nftAddress: 'A4mhToRrLwi3LCyjKs6y4WAkD93itAMKH5Sq3vMRv9J4' },
     update: {},
     create: {
+      ...commonProps,
       id: 'v3',
       name: 'Villa Dreamland 3',
       location: 'Seminyak, Bali',
       description: 'Exclusive luxury beachfront villa in Seminyak.',
-      pricePerShare: 100,
-      totalValue: 4000000,
-      totalShares: 40000,
-      totalTokens: 40000,
-      tokensSold: 0,
-      bedrooms: 5,
-      bathrooms: 5,
-      sqm: 1200,
-      occupancyStatus: 'Active',
-      ery: 14.0,
-      ary: 14.0,
-      legalStructure: 'FRACTIONAL_OWNERSHIP',
-      nftAddress: 'BNGXwuS1Wg6SG9Dpai8pgCXUXbYJAvyFiHEg8y4WKhMT',
-      chain: 'solana',
-      images: ['/assets/Villa 3.gif.mp4']
+      nftAddress: 'A4mhToRrLwi3LCyjKs6y4WAkD93itAMKH5Sq3vMRv9J4',
+      images: ['/assets/Villa 3.gif']
     }
   });
 
   const v4 = await prisma.villa.upsert({
-    where: { nftAddress: 'HXnYCPQWz1eHV8ipEKNYZSqkW84fA9EYkD9HrWDfbwQJ' },
+    where: { nftAddress: '9reQRL4jLQn7KUXu92iKHpycwqf1FtmywDkGGpJG69or' },
     update: {},
     create: {
+      ...commonProps,
       id: 'v4',
       name: 'Villa Dreamland 4',
       location: 'Canggu, Bali',
       description: 'Minimalist eco-friendly villa in Canggu.',
-      pricePerShare: 100,
-      totalValue: 4000000,
-      totalShares: 40000,
-      totalTokens: 40000,
-      tokensSold: 0,
-      bedrooms: 3,
-      bathrooms: 3,
-      sqm: 400,
-      occupancyStatus: 'Active',
-      ery: 11.0,
-      ary: 11.0,
-      legalStructure: 'FRACTIONAL_OWNERSHIP',
-      nftAddress: 'HXnYCPQWz1eHV8ipEKNYZSqkW84fA9EYkD9HrWDfbwQJ',
-      chain: 'solana',
-      images: ['/assets/Villa 4.gif.mp4']
+      nftAddress: '9reQRL4jLQn7KUXu92iKHpycwqf1FtmywDkGGpJG69or',
+      images: ['/assets/Villa 4.gif']
     }
   });
 
-  const admin = await prisma.user.upsert({
-    where: { address: '35wVymVGdjG3wVfG7XgFarmnK5bp6xDZ3QimpHzDVZqv' },
+  const v5 = await prisma.villa.upsert({
+    where: { nftAddress: 'D95cYTz9ADvvtrhzyNTrdCPEVrSJAiGNfzFyACtLiDpz' },
     update: {},
     create: {
-      address: '35wVymVGdjG3wVfG7XgFarmnK5bp6xDZ3QimpHzDVZqv',
+      ...commonProps,
+      id: 'v5',
+      name: 'Villa Dreamland 5',
+      location: 'Jimbaran, Bali',
+      description: 'Exclusive oceanview villa in Jimbaran with private infinity pool.',
+      nftAddress: 'D95cYTz9ADvvtrhzyNTrdCPEVrSJAiGNfzFyACtLiDpz',
+      images: ['/assets/Villa 5.gif']
+    }
+  });
+
+  await prisma.user.upsert({
+    where: { address: '3qvjpDu3wkvR11aAQAUTB3zxeyTyTUUDAT6wJXAK92hL' },
+    update: {},
+    create: {
+      address: '3qvjpDu3wkvR11aAQAUTB3zxeyTyTUUDAT6wJXAK92hL',
       name: 'ERP Admin',
       role: 'ADMIN'
     }
   });
 
-
-  console.log({ v1, v2, v3, v4, admin });
+  console.log('✅ Seeded villas with correct on-chain artwork (.gif)');
 }
 
 main()

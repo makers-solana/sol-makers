@@ -492,6 +492,7 @@ const Home = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
                 <span className="mini">Villa Dreamland 1</span>
                 <span className="mini">Villa Dreamland 2</span>
                 <span className="mini">Villa Dreamland 3</span>
+                <span className="mini">Villa Dreamland 4</span>
               </div>
             </div>
 

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
 import { createV1, mintV1, TokenStandard, mplTokenMetadata } from '@metaplex-foundation/mpl-token-metadata';
 import { setComputeUnitPrice } from '@metaplex-foundation/mpl-toolbox';
@@ -7,7 +7,6 @@ import { keypairIdentity, generateSigner, percentAmount, createGenericFileFromBr
 import { irysUploader } from '@metaplex-foundation/umi-uploader-irys';
 import bs58 from 'bs58';
 
-const prisma = new PrismaClient();
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': 'https://thehistorymaker.io',
@@ -21,8 +20,8 @@ export const dynamic = 'force-dynamic';
 // Wallets authorized to deploy NFTs
 // Treasury wallet also receives payments & holds unsold tokens
 const ALLOWED_DEPLOYERS = [
-  '35wVymVGdjG3wVfG7XgFarmnK5bp6xDZ3QimpHzDVZqv', // Treasury (Mainnet) — receives payments & deploys
-  'EUWDRpaq8yc5X7paoA7GMfLieL8qUfB3MTm744v7kTim', // Deployer (Mainnet) — deploy only, not treasury receiver
+  '3qvjpDu3wkvR11aAQAUTB3zxeyTyTUUDAT6wJXAK92hL', // Treasury (Mainnet) — receives payments & deploys
+  'EdPsiCgZzq5QGwR8ttLhBzcg5WoNUUrZcPC9juGMJR9y', // Deployer (Mainnet) — deploy only, not treasury receiver
   '8bw4qgyQnChaa91hxUViB8gMLjmC39UvFsPMydwRmUN8', // Devnet
 ];
 
